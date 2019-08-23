@@ -11,8 +11,16 @@ module.exports = async ({
   query {
     sync {
       ID
+      ClassName
+      ParentID
       Title
+      MenuTitle
       Content
+      MetaDescription
+      ShowInMenus
+      ShowInSearch
+      Sort
+      URLSegment
     }
   }
 `;

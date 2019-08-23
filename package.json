@@ -2,10 +2,7 @@
   "name": "gatsby-source-silverstripe",
   "description": "Gatsby source plugin for building websites using the SilverStripe CMS as a data source",
   "version": "2.1.21",
-  "author": "Marcus Ericsson <mericsson@gmail.com> (mericsson.com)",
-  "bugs": {
-    "url": "https://github.com/gatsbyjs/gatsby/issues"
-  },
+  "author": "Stevie Mayhew <stevie@stevie.co.nz>",
   "dependencies": {
     "@babel/runtime": "^7.0.0",
     "@hapi/joi": "^15.1.1",
@@ -28,7 +25,6 @@
     "babel-preset-gatsby-package": "^0.2.2",
     "cross-env": "^5.2.0"
   },
-  "homepage": "https://github.com/gatsbyjs/gatsby/tree/master/packages/gatsby-source-contentful#readme",
   "keywords": [
     "gatsby",
     "gatsby-plugin",
@@ -37,11 +33,6 @@
   "license": "MIT",
   "peerDependencies": {
     "gatsby": "^2.0.33"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/gatsbyjs/gatsby.git",
-    "directory": "packages/gatsby-source-contentful"
   },
   "scripts": {
     "build": "babel src --out-dir . --ignore **/__tests__",
