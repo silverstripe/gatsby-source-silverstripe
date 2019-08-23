@@ -1,16 +1,16 @@
-const ProgressBar = require(`progress`)
-const { createRemoteFileNode } = require(`gatsby-source-filesystem`)
+"use strict";
 
-const bar = new ProgressBar(
-  `Downloading Contentful Assets [:bar] :current/:total :elapsed secs :percent`,
-  {
-    total: 0,
-    width: 30,
-  }
-)
+const ProgressBar = require(`progress`);
 
-let totalJobs = 0
+const {
+  createRemoteFileNode
+} = require(`gatsby-source-filesystem`);
 
+const bar = new ProgressBar(`Downloading Contentful Assets [:bar] :current/:total :elapsed secs :percent`, {
+  total: 0,
+  width: 30
+});
+let totalJobs = 0;
 /**
  * @name downloadContentfulAssets
  * @description Downloads Contentful assets to the local filesystem.
@@ -20,70 +20,70 @@ let totalJobs = 0
 
 const downloadContentfulAssets = async gatsbyFunctions => {
   const {
-    actions: { createNode, touchNode },
+    actions: {
+      createNode,
+      touchNode
+    },
     createNodeId,
     store,
     cache,
     getNodes,
-    reporter,
-  } = gatsbyFunctions
-
-  // Any ContentfulAsset nodes will be downloaded, cached and copied to public/static
+    reporter
+  } = gatsbyFunctions; // Any ContentfulAsset nodes will be downloaded, cached and copied to public/static
   // regardless of if you use `localFile` to link an asset or not.
-  const contentfulAssetNodes = getNodes().filter(
-    n =>
-      n.internal.owner === `gatsby-source-contentful` &&
-      n.internal.type === `ContentfulAsset`
-  )
 
-  await Promise.all(
-    contentfulAssetNodes.map(async node => {
-      totalJobs += 1
-      bar.total = totalJobs
+  const contentfulAssetNodes = getNodes().filter(n => n.internal.owner === `gatsby-source-contentful` && n.internal.type === `ContentfulAsset`);
+  await Promise.all(contentfulAssetNodes.map(async node => {
+    totalJobs += 1;
+    bar.total = totalJobs;
+    let fileNodeID;
+    const {
+      contentful_id: id,
+      node_locale: locale
+    } = node;
+    const remoteDataCacheKey = `contentful-asset-${id}-${locale}`;
+    const cacheRemoteData = await cache.get(remoteDataCacheKey);
+    const url = `http://${node.file.url.slice(2)}`; // Avoid downloading the asset again if it's been cached
+    // Note: Contentful Assets do not provide useful metadata
+    // to compare a modified asset to a cached version?
 
-      let fileNodeID
-      const { contentful_id: id, node_locale: locale } = node
-      const remoteDataCacheKey = `contentful-asset-${id}-${locale}`
-      const cacheRemoteData = await cache.get(remoteDataCacheKey)
-      const url = `http://${node.file.url.slice(2)}`
+    if (cacheRemoteData) {
+      fileNodeID = cacheRemoteData.fileNodeID; // eslint-disable-line prefer-destructuring
 
-      // Avoid downloading the asset again if it's been cached
-      // Note: Contentful Assets do not provide useful metadata
-      // to compare a modified asset to a cached version?
-      if (cacheRemoteData) {
-        fileNodeID = cacheRemoteData.fileNodeID // eslint-disable-line prefer-destructuring
-        touchNode({ nodeId: cacheRemoteData.fileNodeID })
-      }
+      touchNode({
+        nodeId: cacheRemoteData.fileNodeID
+      });
+    } // If we don't have cached data, download the file
 
-      // If we don't have cached data, download the file
-      if (!fileNodeID) {
-        try {
-          const fileNode = await createRemoteFileNode({
-            url,
-            store,
-            cache,
-            createNode,
-            createNodeId,
-            reporter,
-          })
 
-          if (fileNode) {
-            bar.tick()
-            fileNodeID = fileNode.id
+    if (!fileNodeID) {
+      try {
+        const fileNode = await createRemoteFileNode({
+          url,
+          store,
+          cache,
+          createNode,
+          createNodeId,
+          reporter
+        });
 
-            await cache.set(remoteDataCacheKey, { fileNodeID })
-          }
-        } catch (err) {
-          // Ignore
+        if (fileNode) {
+          bar.tick();
+          fileNodeID = fileNode.id;
+          await cache.set(remoteDataCacheKey, {
+            fileNodeID
+          });
         }
+      } catch (err) {// Ignore
       }
+    }
 
-      if (fileNodeID) {
-        node.localFile___NODE = fileNodeID
-      }
+    if (fileNodeID) {
+      node.localFile___NODE = fileNodeID;
+    }
 
-      return node
-    })
-  )
-}
-exports.downloadContentfulAssets = downloadContentfulAssets
+    return node;
+  }));
+};
+
+exports.downloadContentfulAssets = downloadContentfulAssets;
