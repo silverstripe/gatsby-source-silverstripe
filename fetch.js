@@ -1,161 +1,130 @@
-
-
 const fetch = require('isomorphic-fetch');
+
+const LIMIT = 100;
+
+const query = `
+query Sync($Limit:Int!, $Token:String) {
+  sync(limit: $Limit, offsetToken: $Token) {
+    offsetToken
+    results {
+      id
+      uuid
+      created
+      lastEdited
+      className
+      ancestry
+      contentFields
+      link
+      relations {
+        type
+        name
+        records {
+          className
+          id
+          uuid
+        }
+      }
+    }
+  }
+}`;
+const getPagedData = async (endpoint, limit, offsetToken = null, since = null, aggregatedResponse = null) => {
+  const variables = { Limit: limit, Token: offsetToken };
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: process.env.GATSBY_API_URL,
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+    const json = await response.json();
+    const data = json.data.sync;
+    console.log(`Adding ${data.results.length} records...`);
+    if (!aggregatedResponse) {
+      aggregatedResponse = data;
+    } else {
+      aggregatedResponse.results = aggregatedResponse.results.concat(data.results);
+    }
+
+    if (data.offsetToken) {
+      return getPagedData(endpoint, limit, data.offsetToken, since, aggregatedResponse);
+    }
+
+    return aggregatedResponse;
+  } catch (e) {
+    console.error(e);
+  }
+//  .then(res => { console.log(res); return res.json() })
+  // .then(data => {
+  //   console.log('page data', data);
+  //   if (!aggregatedResponse) {
+  //     aggregatedResponse = data;
+  //   } else {
+  //     aggregatedResponse.results = aggregatedResponse.results.concat(data.results);
+  //   }
+
+  //   if (data.offsetToken) {
+  //     return getPagedData(endpoint, limit, data.offsetToken, since, aggregatedResponse);
+  //   }
+
+  //   return aggregatedResponse;
+  // })
+  //.catch(console.error);
+  
+};
+
 
 module.exports = async ({
   syncToken,
   reporter,
-  pluginConfig,
+  pluginConfig
 }) => {
-  const query = `
-  query {
-    sync {
-      ID
-      ClassName
-      ParentID
-      Title
-      MenuTitle
-      Content
-      MetaDescription
-      ShowInMenus
-      ShowInSearch
-      Sort
-      URLSegment
-    }
-  }
-`;
-
-  const syncData = fetch(process.env.GATSBY_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Origin: process.env.GATSBY_API_URL,
-    },
-    body: JSON.stringify({ query }),
-  })
-    .then(res => res.json())
-    .catch(console.error);
+  // Fetch articles.
+  console.time(`Fetch SilverStripe data`);
+  console.log(`Starting to fetch data from SilverStripe`);
+  const ssOptions = {
+    host: `${pluginConfig.get(`host`)}/__gatsby/graphql`,
+  };
 
 
-  return syncData;
+  let currentSyncData;
+
+  try {
+    const since = syncToken || null;
+    currentSyncData = await getPagedData(ssOptions.host, LIMIT, null, since);
+  } catch (e) {
+    reporter.panic(`Fetching SilverStripe data failed`, e);
+  } 
+
+  // currentSyncData.assets = currentSyncData.assets.map(a => {
+  //   if (a) {
+  //     return normalize.fixIds(a);
+  //   }
+  //
+  //   return null;
+  // });
+
+
+  // currentSyncData.deletedEntries = currentSyncData.deletedEntries.map(e => {
+  //   if (e) {
+  //     return normalize.fixIds(e);
+  //   }
+
+  //   return null;
+  // });
+
+
+  // currentSyncData.deletedAssets = currentSyncData.deletedAssets.map(a => {
+  //   if (a) {
+  //     return normalize.fixIds(a);
+  //   }
+
+  //   return null;
+  // });
+
+  const result = {
+    currentSyncData: currentSyncData.results,
+  };
+  return result;
 };
-
-// module.exports = async ({
-//   syncToken,
-//   reporter,
-//   pluginConfig
-// }) => {
-//   // Fetch articles.
-//   console.time(`Fetch SilverStripe data`);
-//   console.log(`Starting to fetch data from SilverStripe`);
-//   const contentfulClientOptions = {
-//     space: pluginConfig.get(`spaceId`),
-//     accessToken: pluginConfig.get(`accessToken`),
-//     host: pluginConfig.get(`host`),
-//     environment: pluginConfig.get(`environment`)
-//   };
-//
-//
-//
-//   const client = contentful.createClient(contentfulClientOptions); // The sync API puts the locale in all fields in this format { fieldName:
-//   // {'locale': value} } so we need to get the space and its default local.
-//   //
-//   // We'll extend this soon to support multiple locales.
-//
-//
-//   let currentSyncData;
-//
-//   try {
-//     const query = syncToken ? {
-//       nextSyncToken: syncToken,
-//     } : {
-//       initial: true,
-//     };
-//     currentSyncData = await client.sync(query);
-//   } catch (e) {
-//     reporter.panic(`Fetching SilverStripe data failed`, e);
-//   } // We need to fetch content types with the non-sync API as the sync API
-//   // doesn't support this.
-//
-//
-//   let contentTypes;
-//
-//   try {
-//     contentTypes = await pagedGet(client, `getContentTypes`);
-//   } catch (e) {
-//     console.log(`error fetching content types`, e);
-//   }
-//
-//   console.log(`contentTypes fetched`, contentTypes.items.length);
-//   let contentTypeItems = contentTypes.items; // Fix IDs on entries and assets, created/updated and deleted.
-//
-//   contentTypeItems = contentTypeItems.map(c => normalize.fixIds(c));
-//   currentSyncData.entries = currentSyncData.entries.map(e => {
-//     if (e) {
-//       return normalize.fixIds(e);
-//     }
-//
-//     return null;
-//   });
-//
-//
-//   // currentSyncData.assets = currentSyncData.assets.map(a => {
-//   //   if (a) {
-//   //     return normalize.fixIds(a);
-//   //   }
-//   //
-//   //   return null;
-//   // });
-//
-//
-//   currentSyncData.deletedEntries = currentSyncData.deletedEntries.map(e => {
-//     if (e) {
-//       return normalize.fixIds(e);
-//     }
-//
-//     return null;
-//   });
-//
-//
-//   currentSyncData.deletedAssets = currentSyncData.deletedAssets.map(a => {
-//     if (a) {
-//       return normalize.fixIds(a);
-//     }
-//
-//     return null;
-//   });
-//
-//
-//   const result = {
-//     currentSyncData,
-//     contentTypeItems,
-//   };
-//   return result;
-// };
-// /**
-//  * Gets all the existing entities based on pagination parameters.
-//  * The first call will have no aggregated response. Subsequent calls will
-//  * concatenate the new responses to the original one.
-//  */
-
-
-function pagedGet(client, method, query = {}, skip = 0, pageLimit = 1000, aggregatedResponse = null) {
-  return client[method](Object.assign({}, query, {
-    skip,
-    limit: pageLimit,
-    order: 'sys.createdAt',
-  }))
-    .then((response) => {
-      if (!aggregatedResponse) {
-        aggregatedResponse = response;
-      } else {
-        aggregatedResponse.items = aggregatedResponse.items.concat(response.items);
-      }
-
-      if (skip + pageLimit <= response.total) {
-        return pagedGet(client, method, query, skip + pageLimit, pageLimit, aggregatedResponse);
-      }
-
-      return aggregatedResponse;
-    });
-}

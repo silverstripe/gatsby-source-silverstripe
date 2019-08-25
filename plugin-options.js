@@ -10,10 +10,9 @@ const chalk = require(`chalk`);
 const _ = require(`lodash`);
 
 const defaultOptions = {
-  host: `http://ss.bambusa.localhost/graphql`,
-  environment: `master`,
+  accessToken: null,
+  host: null,
   downloadLocal: false,
-  localeFilter: () => false,
   forceFullSync: false
 };
 exports.defaultOptions = defaultOptions;
@@ -27,18 +26,16 @@ const createPluginConfig = pluginOptions => {
 };
 
 exports.createPluginConfig = createPluginConfig;
+
 const optionsSchema = Joi.object().keys({
-  accessToken: Joi.string().required().empty(),
-  spaceId: Joi.string().required().empty(),
-  host: Joi.string().empty(),
-  environment: Joi.string().empty(),
+  accessToken: Joi.string(),
+  host: Joi.string().required().empty(),
   downloadLocal: Joi.boolean(),
-  localeFilter: Joi.func(),
   forceFullSync: Joi.boolean(),
   // default plugins passed by gatsby
   plugins: Joi.array()
 });
-const maskedFields = [`accessToken`, `spaceId`];
+const maskedFields = [`accessToken`];
 
 const validateOptions = ({
   reporter
@@ -52,15 +49,21 @@ const validateOptions = ({
     result.error.details.forEach(detail => {
       errors[detail.path[0]] = detail.message;
     });
-    reporter.panic(`Problems with gatsby-source-contentful plugin options:
-${exports.formatPluginOptionsForCLI(options, errors)}`);
+    reporter.panic(`
+      Problems with gatsby-source-silverstripe plugin options:
+      ${exports.formatPluginOptionsForCLI(options, errors)}
+    `);
   }
 };
 
 exports.validateOptions = validateOptions;
 
 const formatPluginOptionsForCLI = (pluginOptions, errors = {}) => {
-  const optionKeys = new Set(Object.keys(pluginOptions).concat(Object.keys(defaultOptions)).concat(Object.keys(errors)));
+  const optionKeys = new Set(
+    Object.keys(pluginOptions)
+          .concat(Object.keys(defaultOptions))
+          .concat(Object.keys(errors))
+  );
 
   const getDisplayValue = key => {
     const formatValue = value => {
@@ -89,17 +92,29 @@ const formatPluginOptionsForCLI = (pluginOptions, errors = {}) => {
       return;
     }
 
-    lines.push(`${key}${typeof pluginOptions[key] === `undefined` && typeof defaultOptions[key] !== `undefined` ? chalk.dim(` (default value)`) : ``}: ${getDisplayValue(key)}${typeof errors[key] !== `undefined` ? ` - ${chalk.red(errors[key])}` : ``}`);
+    const formattedValue = 
+      typeof pluginOptions[key] === `undefined` && 
+      typeof defaultOptions[key] !== `undefined`
+        ? chalk.dim(` (default value)`)
+        : ``;
+
+    const formattedError = 
+        typeof errors[key] !== `undefined`
+          ? ` - ${chalk.red(errors[key])}`
+          : ``;
+    lines.push(
+      `${key}${formattedValue}: ${getDisplayValue(key)}${formattedError}`
+    );
   });
   return lines.join(`\n`);
 };
+
+
 /**
  * Mask majority of input to not leak any secrets
  * @param {string} input
  * @returns {string} masked text
  */
-
-
 exports.formatPluginOptionsForCLI = formatPluginOptionsForCLI;
 
 const maskText = input => {
