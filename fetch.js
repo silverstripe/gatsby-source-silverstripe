@@ -71,22 +71,23 @@ const getSummaryData = async (since = null) => {
 
 const getPagedData = async (limit, total, offsetToken = null, since = null, aggregatedResponse = null) => {
   const variables = { Limit: limit, Token: offsetToken };
+  let newAggregatedResponse = aggregatedResponse;
   try {
     const json = await doFetch(resultsQuery, variables);
     const data = json.data.sync;
     console.log(`Adding ${data.results.nodes.length} records...`);
-    if (!aggregatedResponse) {
-      aggregatedResponse = data;
+    if (!newAggregatedResponse) {
+      newAggregatedResponse = data;
     } else {
-      aggregatedResponse.results.nodes = aggregatedResponse.results.nodes.concat(data.results.nodes);
+      newAggregatedResponse.results.nodes = newAggregatedResponse.results.nodes.concat(data.results.nodes);
     }
-    const pct = Math.floor((aggregatedResponse.results.nodes.length/total) * 100);
+    const pct = Math.floor((newAggregatedResponse.results.nodes.length/total) * 100);
     console.log(`${pct}% complete`);
     if (data.results.offsetToken) {
-      return getPagedData(limit, total, data.results.offsetToken, since, aggregatedResponse);
+      return getPagedData(limit, total, data.results.offsetToken, since, newAggregatedResponse);
     }
 
-    return aggregatedResponse;
+    return newAggregatedResponse;
   } catch (e) {
     console.error(e);
   }
@@ -102,7 +103,7 @@ module.exports = async ({
   // Fetch dataobjects.
   console.time(`Fetch SilverStripe data`);
   console.log(`Starting to fetch data from SilverStripe`);
-  endpoint = `${pluginConfig.get(`host`)}/__gatsby/graphql`;
+  endpoint = `${pluginConfig.get('host')}/__gatsby/graphql`;
 
 
   let currentSyncData;
@@ -113,11 +114,10 @@ module.exports = async ({
     console.log(`Fetching ${summary.total} records across ${summary.includedClasses.length} dataobjects...`);
     currentSyncData = await getPagedData(LIMIT, summary.total, null, since);
   } catch (e) {
-    reporter.panic(`Fetching SilverStripe data failed`, e);
+    reporter.panic('Fetching SilverStripe data failed', e);
   } 
 
-  const result = {
+  return {
     currentSyncData: currentSyncData.results,
   };
-  return result;
 };

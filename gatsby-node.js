@@ -58,7 +58,7 @@ exports.sourceNodes = async ({
       ...record,
       ...contentFields,
       id: createNodeId(record.uuid),
-      silverstripe_id: record.id,      
+      silverstripe_id: record.id,
       internal: {
         type: 'SilverStripeDataObject',
       },
