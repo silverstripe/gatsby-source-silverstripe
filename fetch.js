@@ -2,33 +2,51 @@ const fetch = require('isomorphic-fetch');
 
 const LIMIT = 100;
 
-const query = `
+let endpoint;
+
+// todo: add "Since" param
+const resultsQuery = `
 query Sync($Limit:Int!, $Token:String) {
-  sync(limit: $Limit, offsetToken: $Token) {
-    offsetToken
-    results {
-      id
-      uuid
-      created
-      lastEdited
-      className
-      ancestry
-      contentFields
-      link
-      relations {
-        type
-        name
-        records {
-          className
-          id
-          uuid
+  sync {
+    results(limit: $Limit, offsetToken: $Token) {
+      offsetToken
+      nodes {
+        id
+        parentUUID
+        uuid
+        created
+        lastEdited
+        className
+        ancestry
+        contentFields
+        link
+        relations {
+          type
+          name
+          ownerType
+          records {
+            className
+            id
+            uuid
+          }
         }
       }
     }
   }
 }`;
-const getPagedData = async (endpoint, limit, offsetToken = null, since = null, aggregatedResponse = null) => {
-  const variables = { Limit: limit, Token: offsetToken };
+// Todo: Add "since" param
+const summaryQuery = `
+  query {
+    sync {
+      summary {
+        total
+        includedClasses
+      }
+    }
+  }
+`;
+
+const doFetch = async (query, variables = {}) => {
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -39,38 +57,39 @@ const getPagedData = async (endpoint, limit, offsetToken = null, since = null, a
       body: JSON.stringify({ query, variables }),
     });
     const json = await response.json();
+    return json;
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const getSummaryData = async (since = null) => {
+  const json = await doFetch(summaryQuery);
+
+  return json.data.sync.summary;
+};
+
+const getPagedData = async (limit, total, offsetToken = null, since = null, aggregatedResponse = null) => {
+  const variables = { Limit: limit, Token: offsetToken };
+  try {
+    const json = await doFetch(resultsQuery, variables);
     const data = json.data.sync;
-    console.log(`Adding ${data.results.length} records...`);
+    console.log(`Adding ${data.results.nodes.length} records...`);
     if (!aggregatedResponse) {
       aggregatedResponse = data;
     } else {
-      aggregatedResponse.results = aggregatedResponse.results.concat(data.results);
+      aggregatedResponse.results.nodes = aggregatedResponse.results.nodes.concat(data.results.nodes);
     }
-
-    if (data.offsetToken) {
-      return getPagedData(endpoint, limit, data.offsetToken, since, aggregatedResponse);
+    const pct = Math.floor((aggregatedResponse.results.nodes.length/total) * 100);
+    console.log(`${pct}% complete`);
+    if (data.results.offsetToken) {
+      return getPagedData(limit, total, data.results.offsetToken, since, aggregatedResponse);
     }
 
     return aggregatedResponse;
   } catch (e) {
     console.error(e);
   }
-//  .then(res => { console.log(res); return res.json() })
-  // .then(data => {
-  //   console.log('page data', data);
-  //   if (!aggregatedResponse) {
-  //     aggregatedResponse = data;
-  //   } else {
-  //     aggregatedResponse.results = aggregatedResponse.results.concat(data.results);
-  //   }
-
-  //   if (data.offsetToken) {
-  //     return getPagedData(endpoint, limit, data.offsetToken, since, aggregatedResponse);
-  //   }
-
-  //   return aggregatedResponse;
-  // })
-  //.catch(console.error);
   
 };
 
@@ -80,48 +99,22 @@ module.exports = async ({
   reporter,
   pluginConfig
 }) => {
-  // Fetch articles.
+  // Fetch dataobjects.
   console.time(`Fetch SilverStripe data`);
   console.log(`Starting to fetch data from SilverStripe`);
-  const ssOptions = {
-    host: `${pluginConfig.get(`host`)}/__gatsby/graphql`,
-  };
+  endpoint = `${pluginConfig.get(`host`)}/__gatsby/graphql`;
 
 
   let currentSyncData;
 
   try {
     const since = syncToken || null;
-    currentSyncData = await getPagedData(ssOptions.host, LIMIT, null, since);
+    const summary = await getSummaryData(since);
+    console.log(`Fetching ${summary.total} records across ${summary.includedClasses.length} dataobjects...`);
+    currentSyncData = await getPagedData(LIMIT, summary.total, null, since);
   } catch (e) {
     reporter.panic(`Fetching SilverStripe data failed`, e);
   } 
-
-  // currentSyncData.assets = currentSyncData.assets.map(a => {
-  //   if (a) {
-  //     return normalize.fixIds(a);
-  //   }
-  //
-  //   return null;
-  // });
-
-
-  // currentSyncData.deletedEntries = currentSyncData.deletedEntries.map(e => {
-  //   if (e) {
-  //     return normalize.fixIds(e);
-  //   }
-
-  //   return null;
-  // });
-
-
-  // currentSyncData.deletedAssets = currentSyncData.deletedAssets.map(a => {
-  //   if (a) {
-  //     return normalize.fixIds(a);
-  //   }
-
-  //   return null;
-  // });
 
   const result = {
     currentSyncData: currentSyncData.results,

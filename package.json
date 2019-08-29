@@ -1,20 +1,21 @@
 {
   "name": "gatsby-source-silverstripe",
   "description": "Gatsby source plugin for building websites using the SilverStripe CMS as a data source",
-  "version": "2.1.21",
+  "version": "1.0.0",
   "author": "Stevie Mayhew <stevie@stevie.co.nz>",
   "dependencies": {
     "@babel/runtime": "^7.0.0",
     "@hapi/joi": "^15.1.1",
     "apollo-boost": "^0.4.4",
-    "isomorphic-fetch": "^2.2.1",
     "axios": "^0.19.0",
     "base64-img": "^1.0.3",
     "bluebird": "^3.5.0",
     "deep-map": "^1.5.0",
+    "fs": "^0.0.1-security",
     "fs-extra": "^4.0.2",
     "gatsby-plugin-sharp": "^2.2.13",
     "gatsby-source-filesystem": "^2.1.10",
+    "isomorphic-fetch": "^2.2.1",
     "json-stringify-safe": "^5.0.1",
     "lodash": "^4.17.14",
     "qs": "^6.4.0"

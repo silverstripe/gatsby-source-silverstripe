@@ -6,20 +6,11 @@ const _ = require(`lodash`);
 
 const fs = require(`fs-extra`);
 const fetchData = require(`./fetch`);
-const typePrefix = 'SilverStripe';
 
 const HAS_ONE = 'HAS_ONE';
 const HAS_MANY = 'HAS_MANY';
 const MANY_MANY = 'MANY_MANY';
 const BELONGS_TO = 'BELONGS_TO';
-
-const makeTypeName = type => (
-  _.upperFirst(
-    _.camelCase(
-      `${typePrefix} ${type.substr(type.lastIndexOf('__') + 1)}`
-    )
-  )
-);
 
 const {
   createPluginConfig,
@@ -32,19 +23,13 @@ exports.onPreBootstrap = () => {
 
 exports.sourceNodes = async ({
   actions,
-  getNode,
-  getNodes,
   createNodeId,
   createContentDigest,
   store,
-  cache,
   reporter
 }, pluginOptions) => {
   const {
     createNode,
-    deleteNode,
-    touchNode,
-    setPluginStatus
   } = actions;
   const pluginConfig = createPluginConfig(pluginOptions);
 
@@ -53,14 +38,8 @@ exports.sourceNodes = async ({
   )
 
   let syncToken;
-
-  if (
-    !pluginConfig.get('forceFullSync') && 
-    store.getState().status.plugins && 
-    store.getState().status.plugins['gatsby-source-silverstripe'] &&
-    store.getState().status.plugins['gatsby-source-silverstripe'][createSyncToken()]
-  ) {
-    syncToken = store.getState().status.plugins['gatsby-source-silverstripe'][createSyncToken()];
+  if (!pluginConfig.get('forceFullSync')) {
+    syncToken = _.get(store.getState(), `status.plugins.gatsby-source-silverstripe.${createSyncToken()}`);
   }
 
   const data = await fetchData({
@@ -72,7 +51,7 @@ exports.sourceNodes = async ({
   const nodes = new Map();
 
   // first pass - create basic nodes
-  data.currentSyncData.forEach(record => {
+  data.currentSyncData.nodes.forEach(record => {
     const contentFields = JSON.parse(record.contentFields);
     delete record.contentFields;
     const node = {
@@ -81,7 +60,7 @@ exports.sourceNodes = async ({
       id: createNodeId(record.uuid),
       silverstripe_id: record.id,      
       internal: {
-        type: makeTypeName(record.className),
+        type: 'SilverStripeDataObject',
       },
     };
     nodes.set(record.uuid, node);
@@ -92,7 +71,10 @@ exports.sourceNodes = async ({
   nodes.forEach(n => {
     // deep clone
     const node = JSON.parse(JSON.stringify(n));
-    node.relations.forEach(({ type, records, name}) => {
+    node.relations.forEach(({ type, records, ownerType, name}) => {
+      if (!node[ownerType]) {
+        node[ownerType] = {};
+      }
       switch (type) {
         case HAS_ONE:
         case BELONGS_TO:{
@@ -108,8 +90,7 @@ exports.sourceNodes = async ({
             );
             return;
           }
-          console.log(relatedRecord.id);
-          node[`${name}___NODE`] = relatedRecord.id;
+          node[ownerType][`${name}___NODE`] = relatedRecord.id;
           break;
         }
         case HAS_MANY:
@@ -118,7 +99,7 @@ exports.sourceNodes = async ({
             return;
           }
 
-          node[`${name}___NODE`] = records.map(({ uuid, className, id }) => {
+          node[ownerType][`${name}___NODE`] = records.map(({ uuid, className, id }) => {
             const foreignID = uuid;
             const relatedRecord = nodes.get(foreignID);
             if (!relatedRecord) {
@@ -135,7 +116,6 @@ exports.sourceNodes = async ({
       }
     })
     delete node.relations;
-    node.StaffMembers___NODE && console.log(node.StaffMembers___NODE);
     processedNodes.push(node);
   });
 
