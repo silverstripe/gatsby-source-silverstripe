@@ -9,7 +9,7 @@ const canonicalName = (className) => (
 
 const createTemplateChooser = () => {
     const templateCache = new Map();
-    return (ancestry) => {
+    return ({ ancestry }) => {
         const identifier = `${JSON.stringify(ancestry)}`;
         const cached = templateCache.get(identifier);
         if (cached) {
@@ -38,7 +38,10 @@ const createTemplateChooser = () => {
         return templatePath;
     };
 }
-const buildSiteTree = async ({ graphql, actions, filter}) => {
+
+const defaultTemplateChooser = createTemplateChooser();
+
+const buildSiteTree = async ({ graphql, actions, filter, chooseTemplate = defaultTemplateChooser}) => {
     const filterArg = filter ? `(filter: ${filter})` : ``;
     const results = await graphql(`
             {
@@ -52,12 +55,10 @@ const buildSiteTree = async ({ graphql, actions, filter}) => {
         }
     `);
     const linkableNodes = results.data.allSilverStripeDataObject.nodes.filter(n => n.link && !isFile(n));
-    const chooseTemplate = createTemplateChooser();
     return new Promise((resolve, reject) => {
         linkableNodes.forEach(node => {
-            const layoutTemplate = chooseTemplate(node.ancestry, 'Layout');
-            const containerTemplate = chooseTemplate(node.ancestry);
-            if (containerTemplate && layoutTemplate) {
+            const layoutTemplate = chooseTemplate(node);
+            if (layoutTemplate) {
                 actions.createPage({
                     path: node.link,
                     component: layoutTemplate,
