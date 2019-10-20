@@ -12,6 +12,10 @@ const fetchDataObjects = async ({
   // Fetch dataobjects.
   console.time(`Fetch SilverStripe data`);
   console.log(`Starting to fetch data from SilverStripe`);
+  const host = pluginConfig.get('host');
+  if (!host || !host.match(/^http/)) {
+    reporter.panic(`You have not configured a host for your Silverstripe data source. Please specify one in your gatsby-config.js file`);
+  }
   setEndpoint(`${pluginConfig.get('host')}/__gatsby/graphql`);
 
 

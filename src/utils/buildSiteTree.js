@@ -1,8 +1,9 @@
 const createTemplateChooser = require('./createTemplateChooser');
 const isFile = require('../utils/isFile');
+
 const defaultTemplateChooser = createTemplateChooser();
 
-const buildSiteTree = async ({ graphql, actions, filter, chooseTemplate = defaultTemplateChooser}) => {
+const buildSiteTree = async ({ graphql, actions, filter, chooseTemplate = defaultTemplateChooser}) => {    
     const filterArg = filter ? `(filter: ${filter})` : ``;
     const results = await graphql(`
             {
@@ -31,6 +32,7 @@ const buildSiteTree = async ({ graphql, actions, filter, chooseTemplate = defaul
         `);
     }
     return new Promise((resolve, reject) => {
+        const notFound = {};
         linkableNodes.forEach(node => {
             const layoutTemplate = chooseTemplate(node);
             if (layoutTemplate) {
@@ -46,9 +48,14 @@ const buildSiteTree = async ({ graphql, actions, filter, chooseTemplate = defaul
                 });
                 console.log(`create page ${node.link} with ${layoutTemplate}`);
             } else {
-                console.error('No template found. Skipping');
+                notFound[node.ancestry[node.ancestry.length-1]] = true;
             }
         });
+        const missing = Object.keys(notFound);
+        if (missing.length) {
+            console.warn(`The following dataobjects are missing templates. Maybe you want to create them?`);
+            console.log(`* ${missing.join('\n*')}`);
+        }
         resolve();
     })
 };

@@ -3,8 +3,14 @@
   "description": "Gatsby source plugin for building websites using the SilverStripe CMS as a data source",
   "version": "1.3.0",
   "contributors": [
-  	{ "name": "Stevie Mayhew", "email": "stevie@stevie.co.nz" },
-  	{ "name": "Aaron Carlino", "email": "unclecheese@leftandmain.com" }
+    {
+      "name": "Stevie Mayhew",
+      "email": "stevie@stevie.co.nz"
+    },
+    {
+      "name": "Aaron Carlino",
+      "email": "unclecheese@leftandmain.com"
+    }
   ],
   "dependencies": {
     "@babel/runtime": "^7.0.0",
@@ -16,6 +22,7 @@
     "deep-map": "^1.5.0",
     "fs": "^0.0.1-security",
     "fs-extra": "^4.0.2",
+    "gatsby": "^2.16.3",
     "gatsby-plugin-sharp": "^2.2.13",
     "gatsby-source-filesystem": "^2.1.10",
     "isomorphic-fetch": "^2.2.1",

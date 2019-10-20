@@ -34,6 +34,10 @@ const buildDataObjects = async ({
     pluginConfig,
   });
 
+  if (!data) {
+    console.error(`Encoutered unrecoverable errors trying to fetch dataobjects from Silverstripe. Skipping.`)
+  }
+
   const nodes = new Map();
 
   // first pass - create basic nodes

@@ -98,7 +98,11 @@ const myTemplateChooser = (node) => {
 };
 
 exports.createPages = async ({ graphql, actions }) => {
-  buildSiteTree({graphql, actions});
+  buildSiteTree({
+	  graphql,
+	  actions,
+	  chooseTemplate: myTemplateChooser
+  });
   
   return Promise.resolve();
 };
@@ -133,6 +137,32 @@ query {
 		}
 		ContactUsPage {
 			emailTo
+		}
+	}
+}
+```
+
+## Fragment generation
+
+This plugin will drop a `__fragments.js` artefact in your project's `src/` directory. This is an auto-generated
+collection of fragments that will help you write your queries. The above query can be expressed more simply:
+
+```
+query {
+	allSilverStripeDataObject {
+		# core dataobject fields
+		...CoreFields
+		SilverStripeSiteTree {
+			...SilverStripeSiteTreeFields
+			Children {
+				...CoreFields				
+				SilverStripeSiteTree {
+					...SilverStripeSiteTreeFields
+				}
+			}
+		}
+		ContactUsPage {
+			...ContactUsPageFields
 		}
 	}
 }
