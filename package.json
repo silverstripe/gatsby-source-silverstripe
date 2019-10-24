@@ -1,7 +1,7 @@
 {
   "name": "gatsby-source-silverstripe",
   "description": "Gatsby source plugin for building websites using the SilverStripe CMS as a data source",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "contributors": [
     {
       "name": "Stevie Mayhew",
