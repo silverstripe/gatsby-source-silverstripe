@@ -1,7 +1,7 @@
 const createTemplateChooser = require('./createTemplateChooser');
 const isFile = require('../utils/isFile');
 
-const defaultTemplateChooser = createTemplateChooser();
+const defaultTemplateChooser = createTemplateChooser([`src/templates/Layout`]);
 
 const buildSiteTree = async ({ graphql, actions, filter, chooseTemplate = defaultTemplateChooser}) => {    
     const filterArg = filter ? `(filter: ${filter})` : ``;
