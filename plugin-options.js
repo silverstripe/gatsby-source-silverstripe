@@ -29,7 +29,7 @@ exports.createPluginConfig = createPluginConfig;
 
 const optionsSchema = Joi.object().keys({
   accessToken: Joi.string(),
-  host: Joi.string().required().empty(),
+  host: Joi.string().required(),
   downloadLocal: Joi.boolean(),
   forceFullSync: Joi.boolean(),
   // default plugins passed by gatsby

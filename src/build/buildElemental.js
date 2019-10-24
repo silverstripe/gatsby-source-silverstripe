@@ -2,14 +2,19 @@ const createTemplateChooser = require('../utils/createTemplateChooser');
 const generateArtefact = require('../utils/generateArtefact');
 const path = require('path');
 
-const blocksPath = `src/templates/Blocks`;
-const chooseTemplate = createTemplateChooser([blocksPath]);
-
 const buildElemental = ({ getNodesByType }) => {
-    const map = {};
-    getNodesByType(`SilverStripeDataObject`)
+
+    const elementalNodes = getNodesByType(`SilverStripeDataObject`)
         .filter(node => node.ancestry.includes("DNADesign\\Elemental\\Models\\BaseElement"))
-        .forEach(node => {
+    if (!elementalNodes.length) {
+        return;
+    }
+    
+    const map = {};
+    const blocksPath = `src/templates/Blocks`;
+    const chooseTemplate = createTemplateChooser([blocksPath]);
+        
+    elementalNodes.forEach(node => {
             if (!map[node.className]) {
                 console.log(`Block ${node.className} matched to ${chooseTemplate(node)}`);
                 const blockPath = chooseTemplate(node);
