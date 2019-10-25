@@ -12,12 +12,14 @@ query Sync($Limit:Int!, $Token:String) {
         lastEdited
         className
         ancestry
+        typeAncestry
         contentFields
         link
         relations {
           type
-          name
           ownerType
+          childType
+          name
           records {
             className
             id

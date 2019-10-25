@@ -2,10 +2,8 @@ const _ = require(`lodash`);
 const fetchDataObjects = require('../fetch/fetchDataObjects');
 const { createPluginConfig } = require('../../plugin-options');
 
-const HAS_ONE = 'HAS_ONE';
-const HAS_MANY = 'HAS_MANY';
-const MANY_MANY = 'MANY_MANY';
-const BELONGS_TO = 'BELONGS_TO';
+const RELATION_SINGULAR = 'SINGULAR';
+const RELATION_PLURAL = 'PLURAL';
 
 const buildDataObjects = async ({
   actions,
@@ -44,16 +42,38 @@ const buildDataObjects = async ({
   data.currentSyncData.nodes.forEach(record => {
     const contentFields = JSON.parse(record.contentFields);
     delete record.contentFields;
-    const node = {
-      ...record,
-      ...contentFields,
-      id: createNodeId(record.uuid),
-      silverstripe_id: record.id,
-      internal: {
-        type: 'SilverStripeDataObject',
-      },
-    };
-    nodes.set(record.uuid, node);
+    // Start at DataObject
+    const typeInheritance = record.typeAncestry.slice(
+      record.typeAncestry.indexOf('DataObject')
+      );
+    let parentNode;
+    typeInheritance.forEach(typeName => {
+      let inheritedContentFields = parentNode ? parentNode.contentFields : {};
+      let inheritedRelations = [
+        ...parentNode.relations,
+        ...record.relations.filter(r => r.ownerType === typeName),
+      ];
+
+      if (contentFields[typeName]) {
+        inheritedContentFields = {
+          ...contentFields[typeName]
+        };
+      }
+      const uninheritedRelations = ;
+
+      const node = {
+        ...record,
+        ...inheritedContentFields,
+        relations: inheritedRelations,
+        id: createNodeId(`${typeName}-${record.uuid}`),
+        silverstripe_id: record.id,
+        internal: {
+          type: `SS${typeName}`,
+        },
+      };
+      nodes.set(`${record.uuid}--${typeName}`, node);
+      parentNode = node;
+    });
   });
 
   // second pass - handle relationships and back references
@@ -61,37 +81,32 @@ const buildDataObjects = async ({
   nodes.forEach(n => {
     // deep clone
     const node = JSON.parse(JSON.stringify(n));
-    node.relations.forEach(({ type, records, ownerType, name}) => {
-      if (!node[ownerType]) {
-        node[ownerType] = {};
-      }
+    node.relations.forEach(({ type, records, childType, name}) => {
       switch (type) {
-        case HAS_ONE:
-        case BELONGS_TO:{
+        case RELATION_SINGULAR: {
           if (!records.length) {
             return;
           }
           const record = records[0];
-          const foreignID = record.uuid;
-          const relatedRecord = nodes.get(foreignID);
+          const foreignSKU = `${record.uuid}--${childType}`;
+          const relatedRecord = nodes.get(foreignSKU);
           if (!relatedRecord) {
             console.warn(
               `Could not find related record for ${type} relation "${name}" (foreign ID "${foreignID}") on ${node.internal.type} with link ${node.link}`
             );
             return;
           }
-          node[ownerType][`${name}___NODE`] = relatedRecord.id;
+          node[`${name}___NODE`] = relatedRecord.id;
           break;
         }
-        case HAS_MANY:
-        case MANY_MANY: {
+        case RELATION_PLURAL: {
           if (!records.length) {
             return;
           }
 
-          node[ownerType][`${name}___NODE`] = records.map(({ uuid, className, id }) => {
-            const foreignID = uuid;
-            const relatedRecord = nodes.get(foreignID);
+          node[`${name}___NODE`] = records.map(({ uuid, className, id }) => {
+            const foreignSKU = `${uuid}--${childType}`;
+            const relatedRecord = nodes.get(foreignSKU);
             if (!relatedRecord) {
               console.warn(
                 `Could not find related record for ${type} relation "${name}" 
