@@ -4,8 +4,8 @@ const buildElemental = require('./buildElemental');
 
 const handleSourceNodes = async (gatsbyData, pluginOptions) => {
   await buildDataObjects(gatsbyData, pluginOptions);
-  await buildForms(gatsbyData, pluginOptions);
-  await buildElemental(gatsbyData);
+  // await buildForms(gatsbyData, pluginOptions);
+  // await buildElemental(gatsbyData);
 };
 
 module.exports = handleSourceNodes;

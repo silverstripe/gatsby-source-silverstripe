@@ -7,7 +7,7 @@ const buildSiteTree = async ({ graphql, actions, filter, chooseTemplate = defaul
     const filterArg = filter ? `(filter: ${filter})` : ``;
     const results = await graphql(`
             {
-            allSilverStripeDataObject${filterArg} {
+            allSsDataObject${filterArg} {
                 nodes {
                     id
                     link
@@ -19,7 +19,7 @@ const buildSiteTree = async ({ graphql, actions, filter, chooseTemplate = defaul
             }
         }
     `);
-    const linkableNodes = results.data.allSilverStripeDataObject.nodes.filter(n => n.link && !isFile(n));
+    const linkableNodes = results.data.allSsDataObject.nodes.filter(n => n.link && !isFile(n));
     const map = new Map();
     linkableNodes.filter(n => n.parentUUID === null).forEach(n => {
         map.set(n.className, true);
@@ -36,6 +36,7 @@ const buildSiteTree = async ({ graphql, actions, filter, chooseTemplate = defaul
         linkableNodes.forEach(node => {
             const layoutTemplate = chooseTemplate(node);
             if (layoutTemplate) {
+                console.log(`creating page at ${node.link}`);
                 actions.createPage({
                     path: node.link,
                     component: layoutTemplate,

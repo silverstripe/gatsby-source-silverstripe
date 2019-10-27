@@ -43,34 +43,42 @@ const buildDataObjects = async ({
     const contentFields = JSON.parse(record.contentFields);
     delete record.contentFields;
     // Start at DataObject
-    const typeInheritance = record.typeAncestry.slice(
-      record.typeAncestry.indexOf('DataObject')
-      );
     let parentNode;
-    typeInheritance.forEach(typeName => {
-      let inheritedContentFields = parentNode ? parentNode.contentFields : {};
-      let inheritedRelations = [
-        ...parentNode.relations,
-        ...record.relations.filter(r => r.ownerType === typeName),
-      ];
-
-      if (contentFields[typeName]) {
-        inheritedContentFields = {
-          ...contentFields[typeName]
-        };
+    record.typeAncestry.forEach(typeName => {
+      let node;
+      if (parentNode) {
+        // deep clone
+        node = JSON.parse(JSON.stringify(parentNode));
+        node.relations = [
+          ...node.relations,
+          ...record.relations.filter(r => r.ownerType === typeName)
+        ];
+      } else {
+        node = {
+          ...record,
+          silverstripe_id: record.id,
+        }
       }
-      const uninheritedRelations = ;
 
-      const node = {
-        ...record,
-        ...inheritedContentFields,
-        relations: inheritedRelations,
-        id: createNodeId(`${typeName}-${record.uuid}`),
-        silverstripe_id: record.id,
-        internal: {
-          type: `SS${typeName}`,
-        },
+      // These two fields are unique for each subclass
+      node.id = createNodeId(`${typeName}-${record.uuid}`);
+      node.internal = {
+        type: `SS${typeName}`
       };
+
+      const localContentFields = contentFields[typeName] || {};
+      // Add native content fields
+      node = {
+        ...node,
+        ...localContentFields,
+      };
+
+      // If this node has a parent, add all the child's fields under a special namespace
+      // This results in some duplication of shared fields, like uuid, link, etc.
+      if (parentNode) {
+        parentNode[`${typeName}___NODE`] = node.id;
+      }
+
       nodes.set(`${record.uuid}--${typeName}`, node);
       parentNode = node;
     });
@@ -82,6 +90,7 @@ const buildDataObjects = async ({
     // deep clone
     const node = JSON.parse(JSON.stringify(n));
     node.relations.forEach(({ type, records, childType, name}) => {
+
       switch (type) {
         case RELATION_SINGULAR: {
           if (!records.length) {
@@ -92,7 +101,7 @@ const buildDataObjects = async ({
           const relatedRecord = nodes.get(foreignSKU);
           if (!relatedRecord) {
             console.warn(
-              `Could not find related record for ${type} relation "${name}" (foreign ID "${foreignID}") on ${node.internal.type} with link ${node.link}`
+              `Could not find related record for ${type} relation "${name}" (foreign ID "${foreignSKU}") on ${node.internal.type} with link ${node.link}`
             );
             return;
           }
@@ -103,7 +112,6 @@ const buildDataObjects = async ({
           if (!records.length) {
             return;
           }
-
           node[`${name}___NODE`] = records.map(({ uuid, className, id }) => {
             const foreignSKU = `${uuid}--${childType}`;
             const relatedRecord = nodes.get(foreignSKU);

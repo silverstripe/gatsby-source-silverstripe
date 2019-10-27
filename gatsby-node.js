@@ -5,6 +5,6 @@ const handleSchemaCustomization = require('./src/build/handleSchemaCustomization
 
 exports.onPreBootstrap = handlePreBootstrap;
 exports.sourceNodes = handleSourceNodes;
-exports.onPreExtractQueries = handlePreExtractQueries;
-exports.createSchemaCustomization = handleSchemaCustomization;
+//exports.onPreExtractQueries = handlePreExtractQueries;
+//exports.createSchemaCustomization = handleSchemaCustomization;
 
