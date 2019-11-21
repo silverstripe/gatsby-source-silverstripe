@@ -1,5 +1,6 @@
 const fetch = require('isomorphic-fetch');
 
+let api_key;
 let endpoint;
 
 const executeQuery = async (query, variables = {}) => {
@@ -9,6 +10,7 @@ const executeQuery = async (query, variables = {}) => {
       headers: {
         'Content-Type': 'application/json',
         Origin: process.env.GATSBY_API_URL,
+        'X-Api-Key': api_key,
       },
       body: JSON.stringify({ query, variables }),
     });
@@ -26,8 +28,10 @@ const executeQuery = async (query, variables = {}) => {
 };
 
 const setEndpoint = url => endpoint = url;
+const setApiKey = key => api_key = key;
 
 module.exports = {
 	executeQuery,
-	setEndpoint,
+  setEndpoint,
+  setApiKey,
 };
