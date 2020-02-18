@@ -100,7 +100,7 @@ const buildDataObjects = async ({
               return;
             }
             return relatedRecord.id;
-          });
+          }).filter(id => id);
           break;
         }
       }
