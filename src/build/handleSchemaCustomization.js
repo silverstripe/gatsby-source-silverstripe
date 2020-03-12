@@ -1,11 +1,8 @@
 const handleSchemaCustomization = ({ actions }) => {
     const { createTypes } = actions
     const typeDefs = `
-      type SilverStripeDataObject implements Node {
-        SilverStripeSiteTree: SilverStripeDataObjectSilverStripeSiteTree
-      }
-      type SilverStripeDataObjectSilverStripeSiteTree {
-        Children: [SilverStripeDataObject]
+      type SSSiteTree implements Node{
+        Children: [SSSiteTree]
       }
     `
     createTypes(typeDefs)

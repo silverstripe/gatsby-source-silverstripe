@@ -12,6 +12,7 @@ const executeQuery = async (query, variables = {}) => {
       },
       body: JSON.stringify({ query, variables }),
     });
+    console.log(response);
     const json = await response.json();
     if (json.errors && json.errors.length) {
     	console.error(json.errors);

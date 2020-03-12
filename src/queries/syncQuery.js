@@ -11,10 +11,33 @@ query Sync($Limit:Int!, $Token:String) {
         created
         lastEdited
         className
-        ancestry
+        classAncestry
         typeAncestry
         contentFields
         link
+        hierarchy {
+          ancestors {
+            uuid
+            id
+          }
+          allAncestors {
+            uuid
+            id
+          }
+          parent {
+            uuid
+            id
+          }
+          children {
+            uuid
+            id
+          }
+          allChildren {
+            uuid
+            id
+          }
+          level
+        }
         relations {
           type
           ownerType

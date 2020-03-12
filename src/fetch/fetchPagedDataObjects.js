@@ -1,7 +1,13 @@
 const { executeQuery } = require('./executeQuery');
 const syncQuery = require('../queries/syncQuery');
 
-const fetchPagedDataObjects = async (limit, total, offsetToken = null, since = null, aggregatedResponse = null) => {
+const fetchPagedDataObjects = async ({
+  limit,
+  offsetToken = null,
+  since = null,
+  aggregatedResponse = null,
+  total,
+}) => {
   const variables = { Limit: limit, Token: offsetToken };
   let newAggregatedResponse = aggregatedResponse;
   try {
@@ -16,7 +22,13 @@ const fetchPagedDataObjects = async (limit, total, offsetToken = null, since = n
     const pct = Math.floor((newAggregatedResponse.results.nodes.length/total) * 100);
     console.log(`${pct}% complete`);
     if (data.results.offsetToken) {
-      return fetchPagedDataObjects(limit, total, data.results.offsetToken, since, newAggregatedResponse);
+      return fetchPagedDataObjects({
+        since,
+        limit,
+        total,
+        offsetToken: data.results.offsetToken,        
+        aggregatedResponse: newAggregatedResponse,        
+      });
     }
 
     return newAggregatedResponse;

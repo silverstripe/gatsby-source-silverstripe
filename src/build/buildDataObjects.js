@@ -1,9 +1,11 @@
 const _ = require(`lodash`);
 const fetchDataObjects = require('../fetch/fetchDataObjects');
+const fetchSummaryData = require('../fetch/fetchSummaryData');
 const { createPluginConfig } = require('../../plugin-options');
 
 const RELATION_SINGULAR = 'SINGULAR';
 const RELATION_PLURAL = 'PLURAL';
+
 
 const buildDataObjects = async ({
   actions,
@@ -26,10 +28,18 @@ const buildDataObjects = async ({
     syncToken = _.get(store.getState(), `status.plugins.gatsby-source-silverstripe.${createSyncToken()}`);
   }
 
+  // Get a preview of the sync
+  const summary = await fetchSummaryData(syncToken);
+  const includedClasses = summary.includedClasses.map(c => c.className);
+
+  console.log(`Fetching ${summary.total} records across ${includedClasses.length} dataobjects...`);
+
+  // Get all the data
   const data = await fetchDataObjects({
     syncToken,
     reporter,
     pluginConfig,
+    total: summary.total,
   });
 
   if (!data) {
@@ -42,10 +52,10 @@ const buildDataObjects = async ({
   data.currentSyncData.nodes.forEach(record => {
     const contentFields = JSON.parse(record.contentFields);
     delete record.contentFields;
-    // Start at DataObject
-    let parentNode;
+    const inheritanceStack = [];
     record.typeAncestry.forEach(typeName => {
       let node;
+      const parentNode = inheritanceStack[inheritanceStack.length - 1];
       if (parentNode) {
         // deep clone
         node = JSON.parse(JSON.stringify(parentNode));
@@ -57,6 +67,7 @@ const buildDataObjects = async ({
         node = {
           ...record,
           silverstripe_id: record.id,
+          _extend: {},
         }
       }
 
@@ -75,12 +86,13 @@ const buildDataObjects = async ({
 
       // If this node has a parent, add all the child's fields under a special namespace
       // This results in some duplication of shared fields, like uuid, link, etc.
-      if (parentNode) {
-        parentNode[`${typeName}___NODE`] = node.id;
-      }
-
+      inheritanceStack.forEach(parentNode => {
+        parentNode._extend[`${typeName}___NODE`] = node.id;
+      });
+      
       nodes.set(`${record.uuid}--${typeName}`, node);
-      parentNode = node;
+      inheritanceStack.push(node);
+
     });
   });
 
@@ -97,11 +109,19 @@ const buildDataObjects = async ({
             return;
           }
           const record = records[0];
+
+          // Skip the relationship if the class is not part of the sync (e.g. Member)
+          if (!includedClasses.includes(record.className)) {
+            return;
+          }
+
           const foreignSKU = `${record.uuid}--${childType}`;
           const relatedRecord = nodes.get(foreignSKU);
           if (!relatedRecord) {
             console.warn(
-              `Could not find related record for ${type} relation "${name}" (foreign ID "${foreignSKU}") on ${node.internal.type} with link ${node.link}`
+              `Could not find related record for ${type} relation "${name}" 
+              (foreign ID "${foreignSKU}") on ${node.internal.type} with 
+              link ${node.link}`
             );
             return;
           }
@@ -113,6 +133,10 @@ const buildDataObjects = async ({
             return;
           }
           node[`${name}___NODE`] = records.map(({ uuid, className, id }) => {
+            if (!includedClasses.includes(className)) {
+              return;
+            }
+
             const foreignSKU = `${uuid}--${childType}`;
             const relatedRecord = nodes.get(foreignSKU);
             if (!relatedRecord) {
@@ -129,6 +153,51 @@ const buildDataObjects = async ({
       }
     })
     delete node.relations;
+
+    // DataObjects can bail out here without doing hierarchy relations
+    // (no files for now)
+    if (!node.typeAncestry.includes('SiteTree')) {
+      node.hierarchy = {};
+      processedNodes.push(node);
+
+      return;
+    }
+
+    // Convert hierarchy graph to proper relationships
+    if (node.hierarchy.parent) {
+      const { uuid, id } = node.hierarchy.parent;
+      const foreignSKU = `${uuid}--SiteTree`;
+      const relatedRecord = nodes.get(foreignSKU);
+      if (!relatedRecord) {
+        console.warn(
+          `Could not find SiteTree ${id} for hierarchy "parent" on ${node.className} ${node.silverstripe_id}}`
+        );
+        return;
+      }
+
+      node.hierarchy.parent___NODE = relatedRecord.id;
+      delete node.hierarchy.parent;
+    }
+
+    const hierarchyFields = ['ancestors', 'allAncestors', 'children', 'allChildren'];
+
+    hierarchyFields.forEach(field => {
+      node.hierarchy[`${field}___NODE`] = node.hierarchy[field].map(({uuid, id}) => {
+        const foreignSKU = `${uuid}--SiteTree`;
+        const relatedRecord = nodes.get(foreignSKU);
+        if (!relatedRecord) {
+          console.warn(
+            `Could not find SiteTree ${id} for hierarchy field ${field} on ${node.className} ${node.silverstripe_id}`
+          );
+          return;
+        }
+        return relatedRecord.id;
+
+      });
+      delete node.hierarchy[field];
+    })
+
+    // Finally, add the node to the list for creation.
     processedNodes.push(node);
   });
 
