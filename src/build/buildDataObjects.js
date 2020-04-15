@@ -1,7 +1,6 @@
 const _ = require(`lodash`);
 const fetchDataObjects = require('../fetch/fetchDataObjects');
 const fetchSummaryData = require('../fetch/fetchSummaryData');
-const { createPluginConfig } = require('../../plugin-options');
 
 const RELATION_SINGULAR = 'SINGULAR';
 const RELATION_PLURAL = 'PLURAL';
@@ -17,14 +16,13 @@ const buildDataObjects = async ({
   const {
     createNode,
   } = actions;
-  const pluginConfig = createPluginConfig(pluginOptions);
 
   const createSyncToken = () => (
-    `${pluginConfig.get(`host`)}`
+    `${pluginOptions.host}`
   )
 
   let syncToken;
-  if (!pluginConfig.get('forceFullSync')) {
+  if (!pluginOptions.forceFullSync) {
     syncToken = _.get(store.getState(), `status.plugins.gatsby-source-silverstripe.${createSyncToken()}`);
   }
 
@@ -38,7 +36,6 @@ const buildDataObjects = async ({
   const data = await fetchDataObjects({
     syncToken,
     reporter,
-    pluginConfig,
     total: summary.total,
   });
 

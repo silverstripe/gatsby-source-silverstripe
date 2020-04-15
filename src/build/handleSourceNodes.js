@@ -1,6 +1,6 @@
-const buildDataObjects = require('./buildDataObjects');
-const handleSourceNodes = async (gatsbyData, pluginOptions) => {
-  await buildDataObjects(gatsbyData, pluginOptions);
-};
+const factory = require('../api/factory');
 
-module.exports = handleSourceNodes;
+module.exports = async () => {
+  const API = factory.inst();
+  await API.build();
+};

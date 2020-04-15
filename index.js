@@ -1,3 +1,3 @@
 module.exports = {
-    executeQuery: require('./src/fetch/executeQuery')
+    factory: require('./src/api/factory'),
 };
