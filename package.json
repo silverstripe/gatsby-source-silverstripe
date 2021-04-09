@@ -1,7 +1,7 @@
 {
-  "name": "gatsby-starter-plugin",
-  "version": "1.0.0",
-  "description": "A minimal boilerplate for the essential files Gatsby looks for in a plugin",
+  "name": "gatsby-source-silverstripe",
+  "version": "0.1",
+  "description": "Source data from a Silverstripe CMS website",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -11,6 +11,16 @@
     "gatsby",
     "gatsby-plugin"
   ],
-  "author": "Kyle Gill <kyle.robert.gill@gmail.com>",
-  "license": "0BSD"
+  "author": "Aaron Carlino <unclecheese@leftandmain.com>",
+  "license": "0BSD",
+  "dependencies": {
+    "chalk": "^4.1.0",
+    "gatsby-graphql-source-toolkit": "^1.0.0",
+    "graphql": "^15.5.0",
+    "node-fetch": "^2.6.1",
+    "p-queue": "^6.6.2"
+  },
+  "peerDependencies": {
+    "gatsby": "^3.0.0"
+  }
 }
