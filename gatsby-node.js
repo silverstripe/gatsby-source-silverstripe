@@ -104,7 +104,7 @@ exports.sourceNodes = async (
         results.deletes.forEach(nodeId => deleteNode(nodeId));
     };
 
-    const { batchSize } = pluginConfig;
+    const { batchSize, stage } = pluginConfig;
     let offset = 0;
     
     reporter.info(`Beginning Silverstripe CMS fetch in batches of ${batchSize}`);
@@ -125,7 +125,7 @@ exports.sourceNodes = async (
         limit: batchSize,
         offset,
         since: timestamp,
-        stage: `DRAFT`,
+        stage,
     };
     
     const data = await __fetch(syncQuery, variables);
@@ -182,7 +182,7 @@ exports.sourceNodes = async (
 
 exports.pluginOptionsSchema = ({ Joi }) => {
     return Joi.object({
-        baseUrl: Joi.string().required().description(`
+        baseUrl: Joi.string().uri().required().description(`
             The absolute base URL to your Silverstripe CMS installation, excluding the graphql suburl,
             e.g. https://mywebsite.com
         `),
@@ -209,6 +209,9 @@ exports.pluginOptionsSchema = ({ Joi }) => {
             .default(5),
         typePrefix: Joi.string()
             .default('SS_'),
+        stage: Joi.string()
+            .valid('DRAFT', 'LIVE')
+            .default('DRAFT'),
         
   })
 };
