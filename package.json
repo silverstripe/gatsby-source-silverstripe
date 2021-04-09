@@ -1,6 +1,6 @@
 {
   "name": "gatsby-source-silverstripe",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Source data from a Silverstripe CMS website",
   "main": "index.js",
   "scripts": {
