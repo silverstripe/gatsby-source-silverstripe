@@ -104,19 +104,22 @@ exports.sourceNodes = async (
         results.deletes.forEach(nodeId => deleteNode(nodeId));
     };
 
-    const { batchSize, stage } = pluginConfig;
+    const { batchSize, stage, forceRefresh } = pluginConfig;
     let offset = 0;
     
     reporter.info(`Beginning Silverstripe CMS fetch in batches of ${batchSize}`);
     
-    const timestamp = await cache.get(`lastFetch`) ?? 0;
-    if (timestamp) {
-        const date = new Date(timestamp);
+    let timestamp = 0;
+    if (!forceRefresh) {
+        timestamp = await cache.get(`lastFetch`) ?? 0;
+    }
+    if (timestamp > 0) {
+        const date = new Date(timestamp * 1000);
         reporter.info(`Delta fetching since [${date}]`);
 
         // Ensure existing nodes aren't garbage collected
         __ssTypes.forEach(typeName => {
-            getNodesByType(typeName).forEach(touchNode);
+            getNodesByType(typeName).forEach(node => touchNode(node));
         });    
     } else {
         reporter.info(`This is a full content fetch. It may take a while...`);        
@@ -125,7 +128,7 @@ exports.sourceNodes = async (
         limit: batchSize,
         offset,
         since: timestamp,
-        stage,
+        stage, 
     };
     
     const data = await __fetch(syncQuery, variables);
@@ -145,7 +148,7 @@ exports.sourceNodes = async (
         const numberOfBatches = Math.ceil(remaining / batchSize);
         const { concurrentRequests } = pluginConfig;
         
-        reporter.info(`Multiple fetches required. Using concurrency of ${concurrentRequests}  for ${numberOfBatches} remaining fetches.`);
+        reporter.info(`Multiple fetches required. Using concurrency of ${concurrentRequests} for ${numberOfBatches} remaining fetches.`);
         
         const queue = new PQueue({concurrency: concurrentRequests});
         const pages = [...Array(Math.floor(numberOfBatches/2)).keys()];
@@ -176,8 +179,12 @@ exports.sourceNodes = async (
         await queue.onIdle();
         activity.setStatus(`[100%] (0 batches remaining)`)
         activity.end();
-
+    
     }
+
+    const stamp = Math.floor(Date.now() / 1000);
+    await cache.set(`lastFetch`, stamp);
+
 };
 
 exports.pluginOptionsSchema = ({ Joi }) => {
@@ -212,6 +219,10 @@ exports.pluginOptionsSchema = ({ Joi }) => {
         stage: Joi.string()
             .valid('DRAFT', 'LIVE')
             .default('DRAFT'),
+        forceRefresh: Joi.boolean()
+            .falsy(0, 'N', 'no', 'No', '0', 'false')
+            .truthy(1, 'Y', 'yes', 'Yes', '1', 'true')
+            .default(false)
         
   })
 };
@@ -283,9 +294,6 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
 
 
 
-exports.onPostBuild = async ({ cache }) => {
-    await cache.set(`lastFetch`, Math.floor(Date.now() / 1000))
-};  
 
 exports.createPages = async ({ graphql, actions, reporter }, pluginConfig) => {
     const prefix = pluginConfig.typePrefix;
