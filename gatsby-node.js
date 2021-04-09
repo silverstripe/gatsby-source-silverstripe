@@ -86,7 +86,7 @@ exports.sourceNodes = async (
     },
     pluginConfig
 ) => {  
-    const { createNode, deleteNode } = actions
+    const { createNode, deleteNode, touchNode } = actions
 
     const process = (results) => {
         results.updates.forEach(result => {       
@@ -113,7 +113,7 @@ exports.sourceNodes = async (
     if (timestamp) {
         const date = new Date(timestamp);
         reporter.info(`Delta fetching since [${date}]`);
-        
+
         // Ensure existing nodes aren't garbage collected
         __ssTypes.forEach(typeName => {
             getNodesByType(typeName).forEach(touchNode);
