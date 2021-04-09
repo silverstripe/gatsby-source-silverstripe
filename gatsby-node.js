@@ -82,7 +82,8 @@ exports.sourceNodes = async (
         createContentDigest,
         reporter,
         cache,
-        getNodesByType,
+        getNodesByType,  
+        getNode,      
     },
     pluginConfig
 ) => {  
@@ -101,7 +102,9 @@ exports.sourceNodes = async (
             }
             createNode(nodeData) 
         });
-        results.deletes.forEach(nodeId => deleteNode(nodeId));
+        results.deletes.forEach(nodeId => {
+            deleteNode(getNode(nodeId));
+        });
     };
 
     const { batchSize, stage, forceRefresh } = pluginConfig;
@@ -140,7 +143,7 @@ exports.sourceNodes = async (
     const { data: { sync: { totalCount, results } } } = data;
     
     reporter.info(`Found ${totalCount} nodes to sync.`);
-    
+        
     process(results);
     
     if (totalCount > batchSize) {
