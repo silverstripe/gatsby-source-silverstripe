@@ -264,14 +264,37 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
                 const namedTypeToFetch = namedType.replace(/InheritanceUnion$/, 'Interface');
                 if (isList) {
                     fieldResolvers[field.name] = {
+                        args: {
+                            filter: {
+                                type: `${namedTypeToFetch}FilterInput`,
+                            },
+                            sort: {
+                                type: `${namedTypeToFetch}SortInput`,
+                            },
+                            skip: {
+                                type: `Int`
+                            },
+                            limit: {
+                                type: `Int`,
+                            },
+                        },
                         resolve(source, args, context, info) {
                             if (!Array.isArray(source[field.name])) {
                                 return null;
                             }
                             const ids = source[field.name].map(o => o.id);
-                            return context.nodeModel.getNodesByIds({
-                                ids,
+                            return context.nodeModel.runQuery({
+                                query: {
+                                    filter: {
+                                        ...args.filter ?? {},
+                                        id: { in: ids },                                
+                                    },
+                                    sort: args.sort ?? null,  
+                                    skip: args.skip ?? null,
+                                    limit: args.limit ?? null,
+                                },
                                 type: namedTypeToFetch,
+                                firstOnly: false,
                             })
                         }
                     };
