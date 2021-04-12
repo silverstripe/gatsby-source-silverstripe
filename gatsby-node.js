@@ -154,14 +154,23 @@ exports.sourceNodes = async (
         reporter.info(`Multiple fetches required. Using concurrency of ${concurrentRequests} for ${numberOfBatches} remaining fetches.`);
         
         const queue = new PQueue({concurrency: concurrentRequests});
-        const pages = [...Array(Math.floor(numberOfBatches/2)).keys()];
+        const pages = [...Array(numberOfBatches).keys()];
         
         pages.forEach(pageNumber => {
             queue.add(async () => {
+                const offset = (pageNumber + 1) * batchSize;
                 const response = await __fetch(syncQuery, {
                     ...variables,
-                    offset: pageNumber * batchSize,
-                });
+                    offset,
+                });            
+                if (response.errors && response.errors.length) {
+                    reporter.panic(`
+Sync failed at query:
+    ${JSON.stringify(variables)}
+    offset ${offset}}
+Got errors: ${JSON.stringify(response.errors)}
+                    `);
+                }
                 const { data: { sync:  { results } } } = response;
                 process(results);
                 Promise.resolve();
@@ -341,7 +350,6 @@ exports.createPages = async ({ graphql, actions, reporter }, pluginConfig) => {
 
   result.data.allSsSiteTreeInterface.nodes.forEach(node => {
     const component = chooseTemplate(node);
-    console.log(`chose component ${component} for ${node.internal.type}`);
     if (!component) {
         reporter.warn(`No template found for node ${node.internal.type}. Skipping`);
         return;
