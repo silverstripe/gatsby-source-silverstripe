@@ -6,8 +6,6 @@ const { join } = require('path');
 const path = require(`path`);
 const { URL } = require(`url`);
 const createTemplateChooser = require(`./utils/createTemplateChooser`);
-
-
 const syncQuery = `
 query Sync(
     $limit: Int!,
@@ -240,8 +238,20 @@ exports.pluginOptionsSchema = ({ Joi }) => {
 };
 
 exports.createSchemaCustomization = async ({ actions }, pluginConfig) => {
-    const { createTypes } = actions;
+    const { createTypes, createFieldExtension } = actions;
     const prefix = pluginConfig.typePrefix;
+    
+    // Adds a directive to specify that a field is pre-sorted and unfilterable.
+    createFieldExtension({
+      name: `serialised`,
+      extend() {
+        return {
+          resolve(source, args, context, resolveInfo) {              
+              return source[resolveInfo.fieldName].map(id => context.nodeModel.getNodeById(id));
+          },
+        }
+      },
+    });
 
     const query = `
         query { schema(prefix: "${prefix}" ) }
@@ -254,18 +264,69 @@ exports.createSchemaCustomization = async ({ actions }, pluginConfig) => {
 
 exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
     
-    const resolvers = {};
-    
+
+    const getDefaultSortForType = (typeName) => {
+        const type = intermediateSchema.getType(typeName);
+        if (!type) {
+            return null;
+        }
+        const directive = type.astNode.directives?.find(d => d.name.value === 'defaultSort');
+        if (!directive) {
+            return null;
+        }
+        const col = directive.arguments.find(arg => arg.name.value === 'column');
+        const dir = directive.arguments.find(arg => arg.name.value === 'direction');
+
+        if (!col || !dir) {
+            return null;
+        }
+
+        return {
+            order: dir.value.value,
+            fields: [col.value.value],
+        };
+    };
+
+    const resolvers = {
+        Query: {},
+    };
+    const queryType = intermediateSchema.getType(`Query`);
+    queryFields = queryType.getFields();
+    queryFieldNames = Object.keys(queryFields);
+
     __ssTypes.forEach(typeName => {
         const type = intermediateSchema.getType(typeName);
         if (!type || type.constructor.name !== 'GraphQLObjectType') {
             return;
         }
+
+        const defaultSort = getDefaultSortForType(typeName);
+        if (defaultSort) {
+            const typeQueryName = queryFieldNames.find(name => (
+                queryFields[name].type.toString() === `${typeName}Connection!`
+            ));
+            const interfaceQueryName = queryFieldNames.find(name => (
+                queryFields[name].type.toString() === `${typeName}InterfaceConnection!`
+            ));
+            const queries = [typeQueryName, interfaceQueryName].filter(t => t);
+            queries.forEach(queryName => {
+                const sortArg = queryFields[queryName].args.find(arg => arg.name === 'sort');
+                if (!sortArg) {
+                    return;
+                }
+                sortArg.defaultValue = defaultSort;
+            });
+        }
         const allFields = type.getFields();
         const fieldNames = Object.keys(allFields);
         const fieldResolvers = {};
-        fieldNames.forEach(fieldName => {
+        fieldNames.forEach(fieldName => {        
             const field = allFields[fieldName];
+            // If the field is pre sorted and unfilterable, skip it.
+            if (field.extensions.serialised) { 
+                return;
+            }
+            
             const fullType = field.type.toString();
             const namedType = fullType.replace(/[^A-Za-z0-9_]+/g, '');
             const isList = fullType.startsWith(`[`);
@@ -298,7 +359,7 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
                                         ...args.filter ?? {},
                                         id: { in: ids },                                
                                     },
-                                    sort: args.sort ?? null,  
+                                    sort: args.sort ?? getDefaultSortForType(namedTypeToFetch),  
                                     skip: args.skip ?? null,
                                     limit: args.limit ?? null,
                                 },
@@ -310,7 +371,7 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
                 } else {
                     fieldResolvers[field.name] = {                        
                         resolve(source, args, context, info) {
-                            if (!source[field.name].id) {
+                            if (!source[field.name].id) {``
                                 return null;
                             }
                             return context.nodeModel.getNodeById({
@@ -347,7 +408,6 @@ exports.createPages = async ({ graphql, actions, reporter }, pluginConfig) => {
         }
     }
     `);
-
   result.data.allSsSiteTreeInterface.nodes.forEach(node => {
     const component = chooseTemplate(node);
     if (!component) {

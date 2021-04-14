@@ -14,8 +14,8 @@
   "author": "Aaron Carlino <unclecheese@leftandmain.com>",
   "license": "0BSD",
   "dependencies": {
-    "dotenv": "^8.2.0",
     "chalk": "^4.1.0",
+    "dotenv": "^8.2.0",
     "graphql": "^15.5.0",
     "node-fetch": "^2.6.1",
     "p-queue": "^6.6.2"
