@@ -6,6 +6,8 @@ const { join } = require('path');
 const path = require(`path`);
 const { URL } = require(`url`);
 const createTemplateChooser = require(`./utils/createTemplateChooser`);
+const { createRemoteFileNode } = require(`gatsby-source-filesystem`)
+
 const syncQuery = `
 query Sync(
     $limit: Int!,
@@ -18,8 +20,14 @@ query Sync(
 `;
 
 let __typename = type => type;
-let __ssTypes = [];
 let __fetch;
+
+const __stateCache = {
+    types: [],
+    files: new Set(),
+    schema: null,    
+};
+
 
 class HTTPResponseError extends Error {
 	constructor(response, ...args) {
@@ -66,12 +74,20 @@ const createFetch = (endpoint, apiKey) => async (query, variables = {}) => {
     return data;
 };
 
-exports.onPreBootstrap = (_, pluginConfig) => {
+exports.onPreBootstrap = async ({ cache }, pluginConfig) => {
     const { typePrefix, graphqlEndpoint, baseUrl, apiKey } = pluginConfig;
     __typename = (type) => `${typePrefix}${type}`;
 
     const endpoint = new URL(graphqlEndpoint, baseUrl).toString();
     __fetch = createFetch(endpoint, apiKey);
+
+    const query = `
+        query { schema(prefix: "${typePrefix}" ) }
+    `;
+    const result = await __fetch(query);
+    const { data: { schema: { schema, types } } } = result;
+    __stateCache.schema = schema;
+    __stateCache.types = types;
 };
 
 exports.sourceNodes = async (
@@ -81,14 +97,16 @@ exports.sourceNodes = async (
         reporter,
         cache,
         getNodesByType,  
-        getNode,      
+        getNode,
+        getCache,
+        createNodeId
     },
     pluginConfig
 ) => {  
     const { createNode, deleteNode, touchNode } = actions
 
-    const process = (results) => {
-        results.updates.forEach(result => {       
+    const process = async (results) => {
+        for (const result of results.updates) {       
             const [typeName, typeID] = result.typeAncestry[0];            
             const nodeData = {
                 ...result,
@@ -98,8 +116,33 @@ exports.sourceNodes = async (
                     contentDigest: createContentDigest(result),                    
                 }
             }
-            createNode(nodeData) 
-        });
+            const isFile = result.typeAncestry.some(a => a[0] === `File`);
+            if (isFile) {
+                __stateCache.files.add(nodeData.internal.type);
+                const url = result.absoluteLink;
+                delete result.link;
+                delete result.absoluteLink;
+                
+                const attachedFileID = createNodeId(`${nodeData.id}--${url}`);
+                nodeData.localFile = { id: attachedFileID };
+                const node = createNode(nodeData);
+                createRemoteFileNode({
+                    url,
+                    parentNodeId: nodeData.id,
+                    getCache,
+                    createNode,
+                    createNodeId() {
+                        return attachedFileID;
+                    },
+                    httpHeaders: { 'X-API-KEY': pluginConfig.apiKey, },
+
+                });
+                console.log(`Created remote file ${url}`);
+            } else {
+                createNode(nodeData);                 
+            }
+
+        }
         results.deletes.forEach(nodeId => {
             deleteNode(getNode(nodeId));
         });
@@ -119,7 +162,7 @@ exports.sourceNodes = async (
         reporter.info(`Delta fetching since [${date}]`);
 
         // Ensure existing nodes aren't garbage collected
-        __ssTypes.forEach(typeName => {
+        __stateCache.types.forEach(typeName => {
             getNodesByType(typeName).forEach(node => touchNode(node));
         });    
     } else {
@@ -237,28 +280,22 @@ exports.pluginOptionsSchema = ({ Joi }) => {
   })
 };
 
-exports.createSchemaCustomization = async ({ actions }, pluginConfig) => {
+exports.createSchemaCustomization = async ({ actions, ...rest }, pluginConfig) => {
     const { createTypes, createFieldExtension } = actions;
-    const prefix = pluginConfig.typePrefix;
-    
     // Adds a directive to specify that a field is pre-sorted and unfilterable.
     createFieldExtension({
       name: `serialised`,
       extend() {
         return {
           resolve(source, args, context, resolveInfo) {              
-              return source[resolveInfo.fieldName].map(id => context.nodeModel.getNodeById(id));
+              return source[resolveInfo.fieldName]
+                .map(id => context.nodeModel.getNodeById(id));
           },
         }
       },
     });
 
-    const query = `
-        query { schema(prefix: "${prefix}" ) }
-    `;
-    const result = await __fetch(query);
-    const { data: { schema: { schema, types } } } = result;
-    __ssTypes = types;
+    const schema = __stateCache.schema;
     createTypes(schema);
 };
 
@@ -282,7 +319,7 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
         }
 
         return {
-            order: dir.value.value,
+            order: [dir.value.value],
             fields: [col.value.value],
         };
     };
@@ -290,11 +327,30 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
     const resolvers = {
         Query: {},
     };
+
     const queryType = intermediateSchema.getType(`Query`);
     queryFields = queryType.getFields();
     queryFieldNames = Object.keys(queryFields);
 
-    __ssTypes.forEach(typeName => {
+    // Handle file relationships
+    __stateCache.files.forEach(fileTypeName => {
+        const fileType = intermediateSchema.getType(fileTypeName);
+        resolvers[fileTypeName] = {
+            localFile: {
+                resolve(source, args, context) {
+                    if (!source.localFile.id) {
+                        return null;
+                    }
+                    return context.nodeModel.getNodeById({
+                        id: source.localFile.id,
+                        type: `File`,
+                    })
+                }
+            }
+        }
+    });
+
+    __stateCache.types.forEach(typeName => {
         const type = intermediateSchema.getType(typeName);
         if (!type || type.constructor.name !== 'GraphQLObjectType') {
             return;
@@ -330,7 +386,7 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
             const fullType = field.type.toString();
             const namedType = fullType.replace(/[^A-Za-z0-9_]+/g, '');
             const isList = fullType.startsWith(`[`);
-            if (namedType && __ssTypes.includes(namedType)) {
+            if (namedType && __stateCache.types.includes(namedType)) {
                 const namedTypeToFetch = namedType.replace(/InheritanceUnion$/, 'Interface');
                 if (isList) {
                     fieldResolvers[field.name] = {
@@ -371,7 +427,7 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
                 } else {
                     fieldResolvers[field.name] = {                        
                         resolve(source, args, context, info) {
-                            if (!source[field.name].id) {``
+                            if (!source[field.name].id) {
                                 return null;
                             }
                             return context.nodeModel.getNodeById({
