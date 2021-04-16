@@ -374,15 +374,12 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
                                     return null;
                                 }
                                 const ids = source[field.name].map(o => o.id);
-                                return ids.map(id => {
-                                    return context.nodeModel.runQuery({
-                                        query: {
-                                            id: { eq: id }
-                                        },
+                                return ids.map(id => {                                    
+                                    return context.nodeModel.getNodeById({
                                         type: __typename(`DataObject`),
-                                        firstOnly: true,
-                                    })        
-                                });
+                                        id,
+                                    });
+                                }).filter(breadcrumb => breadcrumb);
                             }
                         };
                     } else {
