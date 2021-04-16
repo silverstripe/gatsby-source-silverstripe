@@ -293,7 +293,8 @@ exports.createSchemaCustomization = async ({ actions, ...rest }, pluginConfig) =
         return {
           resolve(source, args, context, resolveInfo) {              
               return source[resolveInfo.fieldName]
-                .map(id => context.nodeModel.getNodeById(id));
+                .map(id => context.nodeModel.getNodeById(id))
+                .filter(r => r);
           },
         }
       },
