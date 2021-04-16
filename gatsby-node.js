@@ -365,7 +365,7 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
         const fieldResolvers = {};
         fieldNames.forEach(fieldName => {        
             const field = allFields[fieldName];
-            // If the field is pre sorted and unfilterable, thr resolver is
+            // If the field is pre sorted and unfilterable, the resolver is
             // handled by the extension
             if (field.extensions.serialised) { 
                 return;
@@ -415,7 +415,7 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
 
                 } else {
                     fieldResolvers[field.name] = {                        
-                        resolve(source, args, context, info) {
+                        resolve(source, args, context) {
                             if (!source[field.name].id) {
                                 return null;
                             }
@@ -440,11 +440,10 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
                     if (!source.localFile.id) {
                         return null;
                     }
-                    const result =context.nodeModel.getNodeById({
+                    return context.nodeModel.getNodeById({
                         id: source.localFile.id,
                         type: `File`,
-                    })
-                    return { id: source.localFile.id, absolutePath: JSON.stringify(result) }
+                    })                    
                 }
             }
         }
