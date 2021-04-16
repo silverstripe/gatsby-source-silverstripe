@@ -24,7 +24,7 @@ let __fetch;
 
 const __stateCache = {
     types: [],
-    files: new Set(),
+    files: [],
     schema: null,    
 };
 
@@ -85,9 +85,10 @@ exports.onPreBootstrap = async ({ cache }, pluginConfig) => {
         query { schema(prefix: "${typePrefix}" ) }
     `;
     const result = await __fetch(query);
-    const { data: { schema: { schema, types } } } = result;
+    const { data: { schema: { schema, types, files } } } = result;
     __stateCache.schema = schema;
     __stateCache.types = types;
+    __stateCache.files = files;
 };
 
 exports.sourceNodes = async (
@@ -118,14 +119,13 @@ exports.sourceNodes = async (
             }
             const isFile = result.typeAncestry.some(a => a[0] === `File`);
             if (isFile) {
-                __stateCache.files.add(nodeData.internal.type);
                 const url = result.absoluteLink;
                 delete result.link;
                 delete result.absoluteLink;
                 
                 const attachedFileID = createNodeId(`${nodeData.id}--${url}`);
                 nodeData.localFile = { id: attachedFileID };
-                const node = createNode(nodeData);
+                createNode(nodeData);
                 createRemoteFileNode({
                     url,
                     parentNodeId: nodeData.id,
@@ -137,7 +137,6 @@ exports.sourceNodes = async (
                     httpHeaders: { 'X-API-KEY': pluginConfig.apiKey, },
 
                 });
-                console.log(`Created remote file ${url}`);
             } else {
                 createNode(nodeData);                 
             }
@@ -332,23 +331,6 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
     queryFields = queryType.getFields();
     queryFieldNames = Object.keys(queryFields);
 
-    // Handle file relationships
-    __stateCache.files.forEach(fileTypeName => {
-        const fileType = intermediateSchema.getType(fileTypeName);
-        resolvers[fileTypeName] = {
-            localFile: {
-                resolve(source, args, context) {
-                    if (!source.localFile.id) {
-                        return null;
-                    }
-                    return context.nodeModel.getNodeById({
-                        id: source.localFile.id,
-                        type: `File`,
-                    })
-                }
-            }
-        }
-    });
 
     __stateCache.types.forEach(typeName => {
         const type = intermediateSchema.getType(typeName);
@@ -378,52 +360,68 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
         const fieldResolvers = {};
         fieldNames.forEach(fieldName => {        
             const field = allFields[fieldName];
-            // If the field is pre sorted and unfilterable, skip it.
-            if (field.extensions.serialised) { 
-                return;
-            }
-            
             const fullType = field.type.toString();
             const namedType = fullType.replace(/[^A-Za-z0-9_]+/g, '');
             const isList = fullType.startsWith(`[`);
             if (namedType && __stateCache.types.includes(namedType)) {
                 const namedTypeToFetch = namedType.replace(/InheritanceUnion$/, 'Interface');
-                if (isList) {
-                    fieldResolvers[field.name] = {
-                        args: {
-                            filter: {
-                                type: `${namedTypeToFetch}FilterInput`,
-                            },
-                            sort: {
-                                type: `${namedTypeToFetch}SortInput`,
-                            },
-                            skip: {
-                                type: `Int`
-                            },
-                            limit: {
-                                type: `Int`,
-                            },
-                        },
-                        resolve(source, args, context, info) {
-                            if (!Array.isArray(source[field.name])) {
-                                return null;
+                if (isList) {        
+                    // If the field is pre sorted and unfilterable
+                    if (field.extensions.serialised) { 
+                        fieldResolvers[field.name] = {
+                            resolve(source, args, context) {
+                                if (!Array.isArray(source[field.name])) {
+                                    return null;
+                                }
+                                const ids = source[field.name].map(o => o.id);
+                                return ids.map(id => {
+                                    return context.nodeModel.runQuery({
+                                        query: {
+                                            id: { eq: id }
+                                        },
+                                        type: __typename(`DataObject`),
+                                        firstOnly: true,
+                                    })        
+                                });
                             }
-                            const ids = source[field.name].map(o => o.id);
-                            return context.nodeModel.runQuery({
-                                query: {
-                                    filter: {
-                                        ...args.filter ?? {},
-                                        id: { in: ids },                                
-                                    },
-                                    sort: args.sort ?? getDefaultSortForType(namedTypeToFetch),  
-                                    skip: args.skip ?? null,
-                                    limit: args.limit ?? null,
+                        };
+                    } else {
+                        fieldResolvers[field.name] = {
+                            args: {
+                                filter: {
+                                    type: `${namedTypeToFetch}FilterInput`,
                                 },
-                                type: namedTypeToFetch,
-                                firstOnly: false,
-                            })
-                        }
-                    };
+                                sort: {
+                                    type: `${namedTypeToFetch}SortInput`,
+                                },
+                                skip: {
+                                    type: `Int`
+                                },
+                                limit: {
+                                    type: `Int`,
+                                },
+                            },
+                            resolve(source, args, context, info) {
+                                if (!Array.isArray(source[field.name])) {
+                                    return null;
+                                }
+                                const ids = source[field.name].map(o => o.id);
+                                return context.nodeModel.runQuery({
+                                    query: {
+                                        filter: {
+                                            ...args.filter ?? {},
+                                            id: { in: ids },                                
+                                        },
+                                        sort: args.sort ?? getDefaultSortForType(namedTypeToFetch),  
+                                        skip: args.skip ?? null,
+                                        limit: args.limit ?? null,
+                                    },
+                                    type: namedTypeToFetch,
+                                    firstOnly: false,
+                                })
+                            }
+                        };
+                    }
                 } else {
                     fieldResolvers[field.name] = {                        
                         resolve(source, args, context, info) {
@@ -440,6 +438,25 @@ exports.createResolvers = ({ createResolvers, intermediateSchema }) => {
             }
         })
         resolvers[type.name] = fieldResolvers;
+    });
+
+    // Handle file relationships
+    __stateCache.files.forEach(fileTypeName => {
+        resolvers[fileTypeName] = {
+            ...resolvers[fileTypeName],
+            localFile: {
+                resolve(source, args, context) {
+                    if (!source.localFile.id) {
+                        return null;
+                    }
+                    const result =context.nodeModel.getNodeById({
+                        id: source.localFile.id,
+                        type: `File`,
+                    })
+                    return { id: source.localFile.id, absolutePath: JSON.stringify(result) }
+                }
+            }
+        }
     });
     createResolvers(resolvers);
 }
