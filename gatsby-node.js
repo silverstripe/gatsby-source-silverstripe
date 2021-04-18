@@ -155,12 +155,14 @@ exports.sourceNodes = async (
     const { batchSize, stage, forceRefresh } = pluginConfig;
     let offset = 0;
     
-    reporter.info(`Beginning Silverstripe CMS fetch in batches of ${batchSize}`);
-    
-    let timestamp = 0;
-    if (!forceRefresh) {
-        timestamp = await cache.get(`lastFetch`) ?? 0;
-    }
+    reporter.info(`Beginning Silverstripe CMS fetch in batches of ${batchSize} -- hello??`);
+    reporter.info(`fetching timestamp...`);
+    let timestamp = await cache.get(`lastFetch`);
+    reporter.info(`done fetching timestamp`);
+    reporter.info(`Got timestamp, ${timestamp}`);
+    // if (!forceRefresh) {
+    //     timestamp = 
+    // }
     if (timestamp > 0) {
         const date = new Date(timestamp * 1000);
         reporter.info(`Delta fetching since [${date}]`);
@@ -170,7 +172,7 @@ exports.sourceNodes = async (
             getNodesByType(typeName).forEach(node => touchNode(node));
         });    
     } else {
-        reporter.info(`This is a full content fetch. It may take a while...`);        
+        reporter.info(`This is a full content fetch. It may take a while... HI???`);
     }
     const variables = {
         limit: batchSize,
@@ -240,7 +242,10 @@ Got errors: ${JSON.stringify(response.errors)}
     }
 
     const stamp = Math.floor(Date.now() / 1000);
+    reporter.info(`Set stamp to ${stamp}`);
     await cache.set(`lastFetch`, stamp);
+    const val = await cache.get(`lastFetch`);
+    reporter.info(`Stamp is ${val}`);
 
 };
 
