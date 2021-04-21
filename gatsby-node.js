@@ -99,6 +99,7 @@ exports.sourceNodes = async (
         cache,
         getNodesByType,  
         getNode,
+        getNodes,
         getCache,
         createNodeId
     },
@@ -156,21 +157,25 @@ exports.sourceNodes = async (
     let offset = 0;
     
     reporter.info(`Beginning Silverstripe CMS fetch in batches of ${batchSize} -- hello??`);
-    reporter.info(`fetching timestamp...`);
-    let timestamp = await cache.get(`lastFetch`);
-    reporter.info(`done fetching timestamp`);
-    reporter.info(`Got timestamp, ${timestamp}`);
+    let timestamp = await cache.get(`lastFetch`) ?? 0;
     // if (!forceRefresh) {
     //     timestamp = 
     // }
     if (timestamp > 0) {
         const date = new Date(timestamp * 1000);
         reporter.info(`Delta fetching since [${date}]`);
-
+        
+        const a = reporter.activityTimer(`bogohobo`);
+        a.start();
         // Ensure existing nodes aren't garbage collected
-        __stateCache.types.forEach(typeName => {
-            getNodesByType(typeName).forEach(node => touchNode(node));
-        });    
+        getNodes().forEach(node => {
+            if (node.internal.owner !== `gatsby-source-silverstripe`) {
+              return
+            }
+            touchNode(node)
+          })        
+          
+        a.end();
     } else {
         reporter.info(`This is a full content fetch. It may take a while... HI???`);
     }
@@ -180,9 +185,8 @@ exports.sourceNodes = async (
         since: timestamp,
         stage, 
     };
-    
+
     const data = await __fetch(syncQuery, variables);
-    
     if (data.errors && data.errors.length) {
         reporter.panic(`Silverstripe CMS source plugin could not fetch. Errors: `, data.errors);
     }
@@ -190,9 +194,10 @@ exports.sourceNodes = async (
     const { data: { sync: { totalCount, results } } } = data;
     
     reporter.info(`Found ${totalCount} nodes to sync.`);
-        
+   
     process(results);
-    
+
+
     if (totalCount > batchSize) {
         let remaining = totalCount - batchSize;
         const numberOfBatches = Math.ceil(remaining / batchSize);
