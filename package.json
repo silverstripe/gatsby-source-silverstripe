@@ -3,9 +3,13 @@
   "version": "0.2.12",
   "description": "Source data from a Silverstripe CMS website",
   "main": "index.js",
+  "types": "lib-es5/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "echo \"No build script setup\""
+    "build": "tsc && tsc -t ES5 --outDir lib-es5",
+    "format": "prettier --write src/**/*.{ts,tsx}",
+    "watch": "tsc --watch & tsc && tsc -t ES5 --outDir lib-es5 --watch",
+    "publish-local": "npm run prepublishOnly && npm version prerelease --no-git-tag-version && npm pack && mkdirp .tarballs && mv gatsby-source-silverstripe-*.tgz .tarballs/ && echo 'published to .tarballs/'",
+    "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "gatsby",
@@ -23,5 +27,15 @@
   },
   "peerDependencies": {
     "gatsby": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.5",
+    "@types/node": "12.0.0",
+    "eslint": "^7.12.0",
+    "eslint-config-prettier": "^6.14.0",
+    "eslint-config-sanity": "^1.150.8",    
+    "gatsby": "^3.3.1",
+    "typescript": "^4.2.3",
+    "prettier": "^2.1.2"
   }
 }

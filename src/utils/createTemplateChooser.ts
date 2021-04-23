@@ -1,7 +1,10 @@
-const fs = require('fs');
-const nodePath = require('path');
+import fs from 'fs';
+import nodePath from 'path';
+import { NodeResult } from '../gatsby-node';
 
-const createTemplateChooser = (paths, prefix = '') => {
+type chooserFn = (page: NodeResult) => string;
+
+export const createTemplateChooser = (paths: string[], prefix: string = ''): chooserFn => {
     const templateCache = new Map();
     paths.forEach(dir => {
         if (!fs.existsSync(nodePath.resolve(dir))) {
@@ -16,11 +19,11 @@ const createTemplateChooser = (paths, prefix = '') => {
             return cached;
         }
 
-        let templatePath;
+        let templatePath: string | null = null;
         const candidates = typeAncestry.map(t => t[0].replace(new RegExp(`^${prefix}`), ``));
         let candidate = candidates.reverse().pop();
 
-        const findPath = templateName => p => {
+        const findPath = (templateName: string) => (p: string) => {
             const path = nodePath.resolve(nodePath.join(p, `${templateName}.js`));
             if(fs.existsSync(path)) {
                 templatePath = path;
@@ -42,5 +45,3 @@ const createTemplateChooser = (paths, prefix = '') => {
         return templatePath;
     };
 };
-
-module.exports = createTemplateChooser;
