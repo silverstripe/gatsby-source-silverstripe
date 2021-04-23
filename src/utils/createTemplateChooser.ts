@@ -1,47 +1,54 @@
-import fs from 'fs';
-import nodePath from 'path';
-import { NodeResult } from '../gatsby-node';
+import fs from "fs"
+import nodePath from "path"
+import { NodeResult } from "../types"
 
-type chooserFn = (page: NodeResult) => string;
+type chooserFn = (page: NodeResult) => string
 
-export const createTemplateChooser = (paths: string[], prefix: string = ''): chooserFn => {
-    const templateCache = new Map();
-    paths.forEach(dir => {
-        if (!fs.existsSync(nodePath.resolve(dir))) {
-            throw new Error(`You do not have a ${dir} directory. Please create one, or use a custom template choosing function.`);
-        }
-    });
-    
-    return ({ typeAncestry }) => {
-        const identifier = `${JSON.stringify(typeAncestry)}`;
-        const cached = templateCache.get(identifier);
-        if (cached) {
-            return cached;
-        }
+export const createTemplateChooser = (
+  paths: string[],
+  prefix: string = ""
+): chooserFn => {
+  const templateCache = new Map()
+  paths.forEach(dir => {
+    if (!fs.existsSync(nodePath.resolve(dir))) {
+      throw new Error(
+        `You do not have a ${dir} directory. Please create one, or use a custom template choosing function.`
+      )
+    }
+  })
 
-        let templatePath: string | null = null;
-        const candidates = typeAncestry.map(t => t[0].replace(new RegExp(`^${prefix}`), ``));
-        let candidate = candidates.reverse().pop();
+  return ({ typeAncestry }) => {
+    const identifier = `${JSON.stringify(typeAncestry)}`
+    const cached = templateCache.get(identifier)
+    if (cached) {
+      return cached
+    }
 
-        const findPath = (templateName: string) => (p: string) => {
-            const path = nodePath.resolve(nodePath.join(p, `${templateName}.js`));
-            if(fs.existsSync(path)) {
-                templatePath = path;
-                templateCache.set(identifier, templatePath);
-                return true;
-            }
-            return false;      
-        };
+    let templatePath: string | null = null
+    const candidates = typeAncestry.map(t =>
+      t[0].replace(new RegExp(`^${prefix}`), ``)
+    )
+    let candidate = candidates.reverse().pop()
 
-        while(candidate) {
-            paths.some(findPath(candidate));
+    const findPath = (templateName: string) => (p: string) => {
+      const path = nodePath.resolve(nodePath.join(p, `${templateName}.js`))
+      if (fs.existsSync(path)) {
+        templatePath = path
+        templateCache.set(identifier, templatePath)
+        return true
+      }
+      return false
+    }
 
-            if (templatePath) {
-                break;
-            }
+    while (candidate) {
+      paths.some(findPath(candidate))
 
-            candidate = candidates.pop();
-        }
-        return templatePath;
-    };
-};
+      if (templatePath) {
+        break
+      }
+
+      candidate = candidates.pop()
+    }
+    return templatePath
+  }
+}
