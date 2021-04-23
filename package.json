@@ -1,4 +1,4 @@
-{
+ {
   "name": "gatsby-source-silverstripe",
   "version": "0.3.0",
   "description": "Source data from a Silverstripe CMS website",
@@ -9,7 +9,7 @@
     "format": "prettier --write src/**/*.{ts,tsx}",
     "watch": "tsc --watch & tsc && tsc -t ES5 --outDir lib-es5 --watch",
     "publish-local": "npm run prepublishOnly && npm version prerelease --no-git-tag-version && npm pack && mkdirp .tarballs && mv gatsby-source-silverstripe-*.tgz .tarballs/ && echo 'published to .tarballs/'",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "gatsby",

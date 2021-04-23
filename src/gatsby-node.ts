@@ -396,7 +396,7 @@ export const createResolvers: GatsbyNode['createResolvers'] = (
     
     const { createResolvers, intermediateSchema} = args;
 
-    const schema = <Hash> intermediateSchema;
+    const schema = (intermediateSchema as Hash);
     const getDefaultSortForType = (typeName: string): DefaultSort|null => {
         const type = schema.getType(typeName);
         if (!type) {
