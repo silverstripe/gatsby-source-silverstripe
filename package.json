@@ -1,4 +1,4 @@
- {
+{
   "name": "gatsby-source-silverstripe",
   "version": "0.3.2",
   "description": "Source data from a Silverstripe CMS website",
@@ -23,7 +23,7 @@
   "dependencies": {
     "chalk": "^4.1.0",
     "dotenv": "^8.2.0",
-    "gatsby-source-filesystem": "^3.5.0",
+    "gatsby-source-filesystem": "^3.3.0",
     "graphql": "^15.5.0",
     "node-fetch": "^2.6.1",
     "p-queue": "^6.6.2"
@@ -36,9 +36,9 @@
     "@types/node": "12.0.0",
     "eslint": "^7.12.0",
     "eslint-config-prettier": "^6.14.0",
-    "eslint-config-sanity": "^1.150.8",    
+    "eslint-config-sanity": "^1.150.8",
     "gatsby": "^3.3.1",
-    "typescript": "^4.2.3",
-    "prettier": "^2.1.2"
+    "prettier": "^2.1.2",
+    "typescript": "^4.2.3"
   }
 }
