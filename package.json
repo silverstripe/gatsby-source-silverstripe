@@ -4,6 +4,9 @@
   "description": "Source data from a Silverstripe CMS website",
   "main": "index.js",
   "types": "lib-es5/index.d.ts",
+  "engines": {
+    "node": ">= 14"
+  },
   "scripts": {
     "build": "tsc && tsc -t ES5 --outDir lib-es5",
     "format": "prettier --write src/**/*.{ts,tsx}",
@@ -20,7 +23,7 @@
   "dependencies": {
     "chalk": "^4.1.0",
     "dotenv": "^8.2.0",
-    "gatsby-source-filesystem": "^3.3.0",
+    "gatsby-source-filesystem": "^3.5.0",
     "graphql": "^15.5.0",
     "node-fetch": "^2.6.1",
     "p-queue": "^6.6.2"
