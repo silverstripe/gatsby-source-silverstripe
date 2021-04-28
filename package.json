@@ -26,7 +26,8 @@
     "gatsby-source-filesystem": "^3.3.0",
     "graphql": "^15.5.0",
     "node-fetch": "^2.6.1",
-    "p-queue": "^6.6.2"
+    "p-queue": "^6.6.2",
+    "got": "^11.8"
   },
   "peerDependencies": {
     "gatsby": "^3.0.0"
