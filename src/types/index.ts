@@ -14,6 +14,7 @@ export interface PluginConfig extends PluginOptions {
   typePrefix: string
   stage: string
   forceRefresh: boolean
+  templatesPath: string
 }
 
 export interface NodeResult {

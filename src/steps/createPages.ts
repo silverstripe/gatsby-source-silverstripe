@@ -1,6 +1,7 @@
 import { CreatePagesArgs, GatsbyNode } from "gatsby"
-import { InternalNodeResult, PluginConfig } from "../types"
-import { createTemplateChooser } from "../utils/createTemplateChooser"
+import { InternalNodeResult } from "../types"
+import { __typename } from "../buildState"
+import { buildPage } from "../utils/buildPage"
 
 interface PageResult {
   allSsSiteTreeInterface: {
@@ -9,12 +10,14 @@ interface PageResult {
 }
 
 export const createPages: GatsbyNode["createPages"] = async (
-  args: CreatePagesArgs,
-  pluginConfig: PluginConfig
-) => {
-  const { graphql, actions, reporter } = args
-  const prefix = pluginConfig.typePrefix
-  const chooseTemplate = createTemplateChooser([`src/templates`], prefix)
+  args: CreatePagesArgs
+): Promise<void> => {
+  const {
+    graphql,
+    reporter,
+    actions: { createPage },
+  } = args
+
   const result = await graphql<PageResult>(`
     query {
       allSsSiteTreeInterface {
@@ -34,21 +37,6 @@ export const createPages: GatsbyNode["createPages"] = async (
   }
 
   result.data.allSsSiteTreeInterface.nodes.forEach(node => {
-    const component = chooseTemplate(node)
-    if (!component) {
-      reporter.warn(
-        `No template found for node ${node.internal.type}. Skipping`
-      )
-      return
-    }
-    if (node.link) {
-      actions.createPage({
-        path: node.link,
-        component,
-        context: {
-          id: node.id,
-        },
-      })
-    }
+    buildPage(node, { pageCreator: createPage, reporter })
   })
 }

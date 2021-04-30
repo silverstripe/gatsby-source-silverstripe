@@ -25,9 +25,7 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
 
   let offset = 0
 
-  reporter.info(
-    `Beginning Silverstripe CMS fetch in batches of ${batchSize}`
-  )
+  reporter.info(`Beginning Silverstripe CMS fetch in batches of ${batchSize}`)
   let timestamp: number = (await cache.get(`lastFetch`)) ?? 0
 
   if (timestamp > 0) {

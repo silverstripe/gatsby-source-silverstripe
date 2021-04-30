@@ -1,5 +1,6 @@
 import { GatsbyNode, PluginOptionsSchemaArgs } from "gatsby"
-
+import systemPath from "path"
+import { existsSync } from "fs"
 export const pluginOptionsSchema: GatsbyNode["pluginOptionsSchema"] = (
   args: PluginOptionsSchemaArgs
 ) => {
@@ -20,9 +21,13 @@ export const pluginOptionsSchema: GatsbyNode["pluginOptionsSchema"] = (
     concurrentRequests: Joi.number().integer().max(20).min(1).default(5),
     typePrefix: Joi.string().default("SS_"),
     stage: Joi.string().valid("DRAFT", "LIVE").default("DRAFT"),
-    forceRefresh: Joi.boolean()
-      .falsy(0, "N", "no", "No", "0", "false")
-      .truthy(1, "Y", "yes", "Yes", "1", "true")
-      .default(false),
+    templatesPath: Joi.string()
+      .default(`src/templates`)
+      .custom((val: string) => {
+        const path = systemPath.join(process.cwd(), val)
+        if (!existsSync(path)) {
+          throw new Error(`Template path ${path} does not exist`)
+        }
+      }),
   })
 }

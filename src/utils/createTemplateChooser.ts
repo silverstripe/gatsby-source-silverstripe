@@ -1,54 +1,60 @@
-import fs from "fs"
 import nodePath from "path"
 import { NodeResult } from "../types"
+import glob from "fast-glob"
 
-type chooserFn = (page: NodeResult) => string
+export type chooserFn = (page: NodeResult) => string | null
+
+let templateCache = new Map()
 
 export const createTemplateChooser = (
-  paths: string[],
+  path: string,
   prefix: string = ""
 ): chooserFn => {
-  const templateCache = new Map()
-  paths.forEach(dir => {
-    if (!fs.existsSync(nodePath.resolve(dir))) {
-      throw new Error(
-        `You do not have a ${dir} directory. Please create one, or use a custom template choosing function.`
-      )
-    }
-  })
+  const absPath = nodePath.join(process.cwd(), path)
 
-  return ({ typeAncestry }) => {
+  return ({ typeAncestry }): string | null => {
     const identifier = `${JSON.stringify(typeAncestry)}`
     const cached = templateCache.get(identifier)
     if (cached) {
       return cached
     }
 
-    let templatePath: string | null = null
     const candidates = typeAncestry.map(t =>
       t[0].replace(new RegExp(`^${prefix}`), ``)
     )
     let candidate = candidates.reverse().pop()
 
-    const findPath = (templateName: string) => (p: string) => {
-      const path = nodePath.resolve(nodePath.join(p, `${templateName}.js`))
-      if (fs.existsSync(path)) {
-        templatePath = path
-        templateCache.set(identifier, templatePath)
-        return true
+    const findPath = (templateName: string): string | null => {
+      const result = glob.sync(`${absPath}/**/${templateName}.{js,jsx,tsx}`)
+      if (!result.length) {
+        return null
       }
-      return false
+
+      const templatePath = result[0]
+      templateCache.set(identifier, templatePath)
+
+      if (result.length > 1) {
+        console.warn(
+          `Multiple templates found for ${templateName}. Using the first one: ${templatePath}`
+        )
+      }
+
+      return templatePath
     }
 
     while (candidate) {
-      paths.some(findPath(candidate))
+      const templatePath = findPath(candidate)
 
       if (templatePath) {
-        break
+        return templatePath
       }
 
       candidate = candidates.pop()
     }
-    return templatePath
+    return null
   }
+}
+
+export function clearCache(): void {
+  templateCache = new Map()
 }
