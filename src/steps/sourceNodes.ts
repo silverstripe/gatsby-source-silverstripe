@@ -66,7 +66,7 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
 
   reporter.info(`Found ${totalCount} nodes to sync.`)
 
-  processNodes(args, results, pluginConfig.apiKey)
+  await processNodes(args, results, pluginConfig.apiKey)
 
   if (totalCount > batchSize) {
     let remaining = totalCount - batchSize
@@ -100,7 +100,7 @@ Got errors: ${JSON.stringify(response.errors)}
             sync: { results },
           },
         } = response
-        processNodes(args, results, pluginConfig.apiKey)
+        await processNodes(args, results, pluginConfig.apiKey)
         Promise.resolve()
       })
       remaining -= batchSize

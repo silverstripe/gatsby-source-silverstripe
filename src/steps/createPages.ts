@@ -17,7 +17,6 @@ export const createPages: GatsbyNode["createPages"] = async (
     reporter,
     actions: { createPage },
   } = args
-
   const result = await graphql<PageResult>(`
     query {
       allSsSiteTreeInterface {

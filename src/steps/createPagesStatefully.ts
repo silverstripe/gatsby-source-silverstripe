@@ -27,7 +27,10 @@ export const createPagesStatefully: GatsbyNode["createPages"] = async (
   const pagesGlob = `**/*.{js,jsx,tsx}`
 
   const getChangedFiles = async (): Promise<Set<string>> => {
-    const prevFiles = (await cache.get(`ssTemplateManifest`)) ?? []
+    const prevFiles = await cache.get(`ssTemplateManifest`)
+    if (!prevFiles) {
+      return new Set()
+    }
     const currentFiles = await glob.sync(`${absTemplatePath}/${pagesGlob}`)
     const prevManifest: Set<string> = new Set(prevFiles)
     const currentManifest: Set<string> = new Set(currentFiles)

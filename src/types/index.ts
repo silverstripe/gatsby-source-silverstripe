@@ -15,6 +15,7 @@ export interface PluginConfig extends PluginOptions {
   stage: string
   forceRefresh: boolean
   templatesPath: string
+  logFile: string
 }
 
 export interface NodeResult {
@@ -37,4 +38,16 @@ export interface DefaultSort {
 
 export interface Schema {
   getType: (typeName: string) => GraphQLObjectType | null
+}
+
+export interface RelationStub {
+  id: string
+  __typename: string
+}
+
+export interface Relation {
+  id: string
+  internal: {
+    type: string
+  }
 }

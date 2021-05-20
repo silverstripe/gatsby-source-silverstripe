@@ -49,18 +49,14 @@ export const createResolvers: GatsbyNode["createResolvers"] = (
       const namedType = fullType.replace(/[^A-Za-z0-9_]+/g, "")
       const isList = fullType.startsWith(`[`)
       if (namedType && getState().types.includes(namedType)) {
-        const namedTypeToFetch = namedType.replace(
-          /InheritanceUnion$/,
-          "Interface"
-        )
         if (isList) {
           fieldResolvers[field.name] = {
-            args: createDefaultArgs(namedTypeToFetch),
-            resolve: createListResolver(field, namedTypeToFetch, schema),
+            args: createDefaultArgs(namedType),
+            resolve: createListResolver(field, namedType, schema),
           }
         } else {
           fieldResolvers[field.name] = {
-            resolve: createSingleResolver(field, namedTypeToFetch, schema),
+            resolve: createSingleResolver(field, namedType, schema),
           }
         }
       }
