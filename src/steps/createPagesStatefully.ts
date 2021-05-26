@@ -105,11 +105,11 @@ export const createPagesStatefully: GatsbyNode["createPages"] = async (
                 })
 
                 newComponent &&
-                  reporter.info(`
-  Replacing page component at ${node.link}.
-  Old component: ${chalk.red(currentPage.component)}
-  New component: ${chalk.green(newComponent)} 
-                    `)
+                  reporter.info(reporter.stripIndent`
+                    Replacing page component at ${node.link}.
+                    Old component: ${chalk.red(currentPage.component)}
+                    New component: ${chalk.green(newComponent)} 
+                  `)
               }
             }
           })

@@ -1,10 +1,17 @@
 import { GatsbyNode, ParentSpanPluginArgs } from "gatsby"
 import { PluginConfig } from "../types"
-import { setTypenameHandler } from "../buildState"
 import { URL as urlObject } from "url"
-import { setFetch, fetch, getState, setTemplateChooser } from "../buildState"
+import {
+  setFetch,
+  fetch,
+  getState,
+  setTemplateChooser,
+  setTypenameHandler,
+  getHardCacheDir,
+} from "../buildState"
 import { createFetch } from "../utils/createFetch"
 import { createTemplateChooser } from "../utils/createTemplateChooser"
+import fs from 'fs';
 
 // Builds the global state that will be used throughout the build, including
 // some helper functions that vary based on config
@@ -24,6 +31,11 @@ export const onPreBootstrap: GatsbyNode["onPreBootstrap"] = async (
     templatesPath,
   } = pluginOptions
   setTypenameHandler(type => `${typePrefix}${type}`)
+
+  // Ensure the /.silverstripe-cache folder exists
+  if (!fs.existsSync(getHardCacheDir())) {
+    fs.mkdirSync(getHardCacheDir());
+  }
 
   // Fetcher
   const endpoint = new urlObject(graphqlEndpoint, baseUrl).toString()

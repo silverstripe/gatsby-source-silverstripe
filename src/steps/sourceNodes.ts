@@ -3,6 +3,10 @@ import { PluginConfig } from "../types"
 import { __typename, fetch } from "../buildState"
 import { processNodes } from "../utils/processNodes"
 import PQueue from "p-queue"
+import { processFiles } from "../utils/processFiles"
+import _ from "lodash"
+import { downloadFiles } from "../utils/downloadFiles"
+import chalk from "chalk"
 
 const syncQuery: string = `
 query Sync(
@@ -14,21 +18,58 @@ query Sync(
     sync (limit: $limit, offset: $offset, since: $since, stage: $stage)
 }
 `
+interface SSWebhook {
+  since?: number
+  clear?: number
+}
+
+const getTimestampFromWebhook = (data: SSWebhook): number | null => {
+  const validKeys = [`clear`, `since`]
+  const keys = Object.keys(data);
+  if (keys.length > 1) {
+    throw new Error(`Invalid webhook. Must only contain "since" or "clear" in the JSON payload`)
+  }
+  keys.forEach(k => {
+    if (!validKeys.includes(k)) {
+      throw new Error(`Invalid webhook. Key ${k} is not allowed`)
+    }
+  });
+
+  if (data.clear) {
+    return 0;
+  } else if (data.since) {
+    return data.since;
+  }
+
+  return null;
+}
 
 export const sourceNodes: GatsbyNode["sourceNodes"] = async (
   args: ParentSpanPluginArgs,
   pluginConfig: PluginConfig
 ) => {
-  const { actions, reporter, cache, getNodes } = args
+  const { actions, reporter, cache, getNodes, webhookBody } = args
   const { touchNode } = actions
   const { batchSize, stage } = pluginConfig
 
   let offset = 0
 
   reporter.info(`Beginning Silverstripe CMS fetch in batches of ${batchSize}`)
-  let timestamp: number = (await cache.get(`lastFetch`)) ?? 0
 
-  if (timestamp > 0) {
+  const webhookData = webhookBody as SSWebhook
+  let timestamp = getTimestampFromWebhook(webhookData);
+
+  if (timestamp !== null) {
+    reporter.info(
+      timestamp === 0
+        ? chalk.blueBright(`[WEBHOOK]: Clearing all data`)
+        : chalk.blueBright(`[WEBHOOK]: Custom fetch from ${new Date(timestamp * 1000)}`)
+    )
+  } else {
+    timestamp = (await cache.get(`lastFetch`)) ?? 0;
+  }
+
+  if (timestamp && timestamp > 0) {
     const date = new Date(timestamp * 1000)
     reporter.info(`Delta fetching since [${date}]`)
 
@@ -57,7 +98,7 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
       data.errors
     )
   }
-
+``
   const {
     data: {
       sync: { totalCount, results },
@@ -65,8 +106,11 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
   } = data
 
   reporter.info(`Found ${totalCount} nodes to sync.`)
+  
+  let files = new Map();
+  files = new Map([...files, ...processFiles(args, results)]);
 
-  await processNodes(args, results, pluginConfig.apiKey)
+  await processNodes(args, results)
 
   if (totalCount > batchSize) {
     let remaining = totalCount - batchSize
@@ -88,41 +132,45 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
           offset,
         })
         if (response.errors && response.errors.length) {
-          reporter.panic(`
-Sync failed at query:
-    ${JSON.stringify(variables)}
-    offset ${offset}}
-Got errors: ${JSON.stringify(response.errors)}
-                    `)
+          reporter.panic(reporter.stripIndent`
+              Sync failed at query:
+                  ${JSON.stringify(variables)}
+                  offset ${offset}}
+              Got errors: ${JSON.stringify(response.errors)}
+          `)
         }
         const {
           data: {
             sync: { results },
           },
         } = response
-        await processNodes(args, results, pluginConfig.apiKey)
-        Promise.resolve()
+        files = new Map([...files, ...processFiles(args, results)]);
+        await processNodes(args, results)
+        Promise.resolve(results)
       })
       remaining -= batchSize
     })
 
-    let count = 0
-
-    const activity = reporter.activityTimer(
-      `Fetching from Silverstripe CMS GraphQL API:`
+    const progress = reporter.createProgress(
+      `Fetching content from Silverstripe CMS GraphQL API:`,
+      numberOfBatches
     )
-    activity.start()
-
+    progress.start()
+    let count = 0;
     queue.on(`active`, () => {
-      count++
-      const pct = Math.ceil((count / numberOfBatches) * 100)
-      activity.setStatus(
-        `[${pct}%] (${numberOfBatches - count} batches remaining)`
+      progress.tick();
+      progress.setStatus(
+        `Working on batch #${++count}.  Size: ${queue.size}  Pending: ${queue.pending}`
       )
     })
     await queue.onIdle()
-    activity.setStatus(`[100%] (0 batches remaining)`)
-    activity.end()
+    progress.setStatus(`Done!`)
+    progress.done()
+  }
+
+  if (files.size > 0) {
+    reporter.info(`Downloading ${files.size} files...`);
+    await downloadFiles(files, args, pluginConfig);
   }
 
   const stamp = Math.floor(Date.now() / 1000)

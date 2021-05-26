@@ -1,5 +1,6 @@
 import { Hash, NodeResult } from './types';
 import { chooserFn } from './utils/createTemplateChooser';
+import path from 'path';
 
 type TypeNameFunction = (type: string) => string;
 
@@ -87,4 +88,8 @@ export function setTemplateChooser(func: chooserFn): void {
  */
 export function getState(): StateCache {
     return cache;
+}
+
+export function getHardCacheDir(subdir?: string): string {
+    return path.join(process.cwd(), `.silverstripe-cache`, subdir ?? ``);
 }

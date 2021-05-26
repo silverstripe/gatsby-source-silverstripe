@@ -22,7 +22,7 @@ export const pluginOptionsSchema: GatsbyNode["pluginOptionsSchema"] = (
 
     batchSize: Joi.number().integer().max(1000).min(1).default(100),
 
-    concurrentRequests: Joi.number().integer().max(20).min(1).default(5),
+    concurrentRequests: Joi.number().integer().max(50).min(1).default(5),
 
     typePrefix: Joi.string().default("SS_"),
 
@@ -38,5 +38,13 @@ export const pluginOptionsSchema: GatsbyNode["pluginOptionsSchema"] = (
           throw new Error(`Template path ${path} does not exist`)
         }
       }),
+
+      hardCacheAssets: Joi.boolean().default(true).description(`
+        If true, cache the downloaded assets outside the Gatsby cache
+        directory to prevent them from being redownloaded, even after
+        clearing the Gatsby cache for a full build. Only works if your
+        assets are colocated with your CMS instance. Do not use this option
+        if you host your uploaded assets on a CDN.
+      `)
   })
 }

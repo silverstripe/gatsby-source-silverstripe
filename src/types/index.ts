@@ -15,7 +15,8 @@ export interface PluginConfig extends PluginOptions {
   stage: string
   forceRefresh: boolean
   templatesPath: string
-  logFile: string
+  hardCacheAssets: boolean
+
 }
 
 export interface NodeResult {
@@ -23,6 +24,7 @@ export interface NodeResult {
   typeAncestry: Array<string>
   absoluteLink?: string | null
   link?: string | null
+  [key: string]: unknown
 }
 
 export interface InternalNodeResult extends NodeResult {
@@ -51,3 +53,11 @@ export interface Relation {
     type: string
   }
 }
+
+export interface SyncResult {
+  updates: Array<NodeResult>
+  deletes: Array<string>
+}
+
+export type ProcessedFileTuple = [ string, string, string ]
+
