@@ -16,7 +16,6 @@ export interface PluginConfig extends PluginOptions {
   forceRefresh: boolean
   templatesPath: string
   hardCacheAssets: boolean
-
 }
 
 export interface NodeResult {
@@ -59,5 +58,4 @@ export interface SyncResult {
   deletes: Array<string>
 }
 
-export type ProcessedFileTuple = [ string, string, string ]
-
+export type ProcessedFileTuple = [string, string, string]

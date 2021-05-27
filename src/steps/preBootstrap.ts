@@ -11,7 +11,7 @@ import {
 } from "../buildState"
 import { createFetch } from "../utils/createFetch"
 import { createTemplateChooser } from "../utils/createTemplateChooser"
-import fs from 'fs';
+import fs from "fs"
 
 // Builds the global state that will be used throughout the build, including
 // some helper functions that vary based on config
@@ -34,7 +34,7 @@ export const onPreBootstrap: GatsbyNode["onPreBootstrap"] = async (
 
   // Ensure the /.silverstripe-cache folder exists
   if (!fs.existsSync(getHardCacheDir())) {
-    fs.mkdirSync(getHardCacheDir());
+    fs.mkdirSync(getHardCacheDir())
   }
 
   // Fetcher

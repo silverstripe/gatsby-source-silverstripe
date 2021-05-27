@@ -25,23 +25,25 @@ interface SSWebhook {
 
 const getTimestampFromWebhook = (data: SSWebhook): number | null => {
   const validKeys = [`clear`, `since`]
-  const keys = Object.keys(data);
+  const keys = Object.keys(data)
   if (keys.length > 1) {
-    throw new Error(`Invalid webhook. Must only contain "since" or "clear" in the JSON payload`)
+    throw new Error(
+      `Invalid webhook. Must only contain "since" or "clear" in the JSON payload`
+    )
   }
   keys.forEach(k => {
     if (!validKeys.includes(k)) {
       throw new Error(`Invalid webhook. Key ${k} is not allowed`)
     }
-  });
+  })
 
   if (data.clear) {
-    return 0;
+    return 0
   } else if (data.since) {
-    return data.since;
+    return data.since
   }
 
-  return null;
+  return null
 }
 
 export const sourceNodes: GatsbyNode["sourceNodes"] = async (
@@ -57,16 +59,18 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
   reporter.info(`Beginning Silverstripe CMS fetch in batches of ${batchSize}`)
 
   const webhookData = webhookBody as SSWebhook
-  let timestamp = getTimestampFromWebhook(webhookData);
+  let timestamp = getTimestampFromWebhook(webhookData)
 
   if (timestamp !== null) {
     reporter.info(
       timestamp === 0
         ? chalk.blueBright(`[WEBHOOK]: Clearing all data`)
-        : chalk.blueBright(`[WEBHOOK]: Custom fetch from ${new Date(timestamp * 1000)}`)
+        : chalk.blueBright(
+            `[WEBHOOK]: Custom fetch from ${new Date(timestamp * 1000)}`
+          )
     )
   } else {
-    timestamp = (await cache.get(`lastFetch`)) ?? 0;
+    timestamp = (await cache.get(`lastFetch`)) ?? 0
   }
 
   if (timestamp && timestamp > 0) {
@@ -98,7 +102,7 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
       data.errors
     )
   }
-``
+  ;``
   const {
     data: {
       sync: { totalCount, results },
@@ -106,9 +110,9 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
   } = data
 
   reporter.info(`Found ${totalCount} nodes to sync.`)
-  
-  let files = new Map();
-  files = new Map([...files, ...processFiles(args, results)]);
+
+  let files = new Map()
+  files = new Map([...files, ...processFiles(args, results)])
 
   await processNodes(args, results)
 
@@ -144,7 +148,7 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
             sync: { results },
           },
         } = response
-        files = new Map([...files, ...processFiles(args, results)]);
+        files = new Map([...files, ...processFiles(args, results)])
         await processNodes(args, results)
         Promise.resolve(results)
       })
@@ -156,11 +160,13 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
       numberOfBatches
     )
     progress.start()
-    let count = 0;
+    let count = 0
     queue.on(`active`, () => {
-      progress.tick();
+      progress.tick()
       progress.setStatus(
-        `Working on batch #${++count}.  Size: ${queue.size}  Pending: ${queue.pending}`
+        `Working on batch #${++count}.  Size: ${queue.size}  Pending: ${
+          queue.pending
+        }`
       )
     })
     await queue.onIdle()
@@ -169,8 +175,8 @@ export const sourceNodes: GatsbyNode["sourceNodes"] = async (
   }
 
   if (files.size > 0) {
-    reporter.info(`Downloading ${files.size} files...`);
-    await downloadFiles(files, args, pluginConfig);
+    reporter.info(`Downloading ${files.size} files...`)
+    await downloadFiles(files, args, pluginConfig)
   }
 
   const stamp = Math.floor(Date.now() / 1000)

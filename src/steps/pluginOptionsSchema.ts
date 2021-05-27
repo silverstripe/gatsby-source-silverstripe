@@ -39,12 +39,12 @@ export const pluginOptionsSchema: GatsbyNode["pluginOptionsSchema"] = (
         }
       }),
 
-      hardCacheAssets: Joi.boolean().default(true).description(`
+    hardCacheAssets: Joi.boolean().default(true).description(`
         If true, cache the downloaded assets outside the Gatsby cache
         directory to prevent them from being redownloaded, even after
         clearing the Gatsby cache for a full build. Only works if your
         assets are colocated with your CMS instance. Do not use this option
         if you host your uploaded assets on a CDN.
-      `)
+      `),
   })
 }
