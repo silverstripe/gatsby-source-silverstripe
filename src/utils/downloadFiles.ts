@@ -20,7 +20,7 @@ export const downloadFiles = async (
   const { createNode } = args.actions
   const { apiKey, concurrentRequests, hardCacheAssets } = pluginConfig
 
-  const manifestFile = getHardCacheDir(`.assets-manifest.json`)
+  const manifestFile = getHardCacheDir(`.assets-manifest`)
   let manifest: Map<string, string> = new Map()
   if (fs.existsSync(manifestFile)) {
     manifest = v8.deserialize(fs.readFileSync(manifestFile))

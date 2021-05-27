@@ -47,12 +47,19 @@ export const processNodes = async (
       },
     }
     for (const fieldName in nodeData) {
-      const value = nodeData[fieldName]
+      const value = nodeData[fieldName] as RelationStub
       if (!value || typeof value !== "object" || !Array.isArray(value)) {
         continue
       }
 
-      if (Array.isArray(value)) {
+      if (fieldName === `localFile`) {
+        nodeData[fieldName] = {
+          id: value.id,
+          internal: {
+            type: `File`,
+          },
+        }
+      } else if (Array.isArray(value)) {
         nodeData[fieldName] = value.map(updateRelationStub)
       } else {
         nodeData[fieldName] = updateRelationStub(value)

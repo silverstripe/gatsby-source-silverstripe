@@ -30,6 +30,7 @@ export const processFiles = (
       delete result.hash
 
       const attachedFileID = createNodeId(url)
+      console.log(url, " will have localfile id ", attachedFileID)
       result.localFile = {
         id: attachedFileID,
         internal: {
