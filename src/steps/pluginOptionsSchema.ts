@@ -28,8 +28,6 @@ export const pluginOptionsSchema: GatsbyNode["pluginOptionsSchema"] = (
 
     stage: Joi.string().valid("DRAFT", "LIVE").default("DRAFT"),
 
-    logFile: Joi.string().default(systemPath.join(process.cwd(), `debug.log`)),
-
     templatesPath: Joi.string()
       .default(`src/templates`)
       .custom((val: string) => {
