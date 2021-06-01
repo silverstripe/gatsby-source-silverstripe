@@ -16,8 +16,8 @@ export const processFiles = (
     }
 
     const url = result.absoluteLink
-    const hash = result.hash as string
-    const filename = result.filename as string
+    const hash = result.fileHash as string
+    const filename = result.fileFilename as string
 
     if (!url) {
       reporter.warn(
@@ -26,11 +26,10 @@ export const processFiles = (
     } else {
       delete result.link
       delete result.absoluteLink
-      delete result.filename
-      delete result.hash
+      delete result.fileFilename
+      delete result.fileHash
 
       const attachedFileID = createNodeId(url)
-      console.log(url, " will have localfile id ", attachedFileID)
       result.localFile = {
         id: attachedFileID,
         internal: {
