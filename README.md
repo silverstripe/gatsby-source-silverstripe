@@ -12,7 +12,7 @@ on your CMS.
 
 ## Installation
 
-`$ yarn add gatbsy-source-silverstripe`
+`$ yarn add gatsby-source-silverstripe`
 
 ## Getting started
 
